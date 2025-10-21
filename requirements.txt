@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+pandas
+scikit-learn
+lightgbm
+fastapi
+uvicorn
+joblib

@@ -1,0 +1,30 @@
+# Dependências do sistema Especulai
+# API e servidor web
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Machine Learning
+pandas==2.1.4
+scikit-learn==1.3.2
+lightgbm==4.1.0
+joblib==1.3.2
+numpy==1.24.4
+
+# Banco de dados
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.30
+
+# Scraping
+scrapy==2.11.0
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# Task queue
+celery==5.3.6
+redis==5.0.1
+
+# Validação de dados
+pydantic==2.5.0
+
+# Utilitários
+python-dotenv==1.0.0
