@@ -1,19 +1,27 @@
 import scrapy
-from ..items import ImovelItem
+import random
 
 
 class ImoveisSpider(scrapy.Spider):
     name = "imoveis"
 
-    start_urls = [
-        'http://example.com/imoveis',
-    ]
-
-    def parse(self, response):
-        for imovel_selector in response.css('div.imovel'):
-            item = ImovelItem()
-            item['preco'] = imovel_selector.css('span.preco::text').get()
-            item['area'] = imovel_selector.css('span.area::text').get()
+    # Para teste, vamos gerar dados de exemplo ao invés de fazer scraping real
+    def start_requests(self):
+        # Gerar dados de exemplo para teste
+        bairros = ['Copacabana', 'Ipanema', 'Leblon', 'Botafogo', 'Flamengo', 'Tijuca', 'Barra da Tijuca']
+        tipos = ['Apartamento', 'Casa', 'Cobertura', 'Studio']
+        cidades = ['Rio de Janeiro', 'Niterói', 'São Gonçalo']
+        
+        for i in range(20):  # Gerar 20 imóveis de exemplo
+            item = {
+                'preco': f"R$ {random.randint(200000, 2000000):,}",
+                'area': f"{random.randint(30, 200)} m²",
+                'quartos': str(random.randint(1, 5)),
+                'banheiros': str(random.randint(1, 4)),
+                'tipo': random.choice(tipos),
+                'bairro': random.choice(bairros),
+                'cidade': random.choice(cidades)
+            }
             yield item
 
 

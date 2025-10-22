@@ -46,29 +46,23 @@ venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
 
-pip install fastapi uvicorn celery
+pip install -r requirements.txt
 ```
 
-2. Execute a API (opção 1 - script direto):
-```bash
-# Windows:
-start_api.bat
+**Importante**: O arquivo `requirements.txt` inclui a versão correta do Redis (4.6.0) necessária para compatibilidade com Celery 5.3.6.
 
-# Linux/Mac:
-PYTHONPATH=/caminho/para/especulai python run_api.py
-```
 
-3. Execute a API (opção 2 - uvicorn manual):
+2. Execute a API (opção 2 - uvicorn manual):
 ```bash
 # Windows PowerShell:
-$env:PYTHONPATH="C:\Users\gutop\Desktop\especulai"
+$env:PYTHONPATH="C:\Users\gutop\Desktop\especulai\especulai"
 python -m uvicorn especulai_sistema.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Linux/Mac:
-PYTHONPATH=/caminho/para/especulai python -m uvicorn especulai_sistema.api.main:app --reload --host 0.0.0.0 --port 8000
+PYTHONPATH=/caminho/para/especulai/especulai python -m uvicorn especulai_sistema.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-4. Teste:
+3. Teste:
 ```
 GET http://localhost:8000/
 POST http://localhost:8000/predict
@@ -77,9 +71,14 @@ POST http://localhost:8000/predict
 ### Inicialização - Celery (Scraping)
 
 1. Suba o Redis local.
-2. Inicie o worker Celery:
-```
-celery -A v2.tasks.celery worker --loglevel=info
+2. Configure o PYTHONPATH e inicie o worker Celery:
+```bash
+# Windows PowerShell:
+$env:PYTHONPATH="C:\Users\gutop\Desktop\especulai\especulai"
+python -m celery -A especulai_sistema.scraper.celery_app worker --loglevel=info
+
+# Linux/Mac:
+PYTHONPATH=/caminho/para/especulai/especulai python -m celery -A especulai_sistema.scraper.celery_app worker --loglevel=info
 ```
 3. Dispare o scraping:
 ```

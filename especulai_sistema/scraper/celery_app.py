@@ -11,12 +11,18 @@ celery.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", "redis://lo
 def start_scrapy_spider():
     import subprocess
     import pathlib
+    import os
 
-    scrapy_project_path = pathlib.Path(__file__).resolve().parent / "especulai_scraper"
+    # Navegar para o diretório do scraper
+    scraper_path = pathlib.Path(__file__).resolve().parent
+    os.chdir(str(scraper_path))
+    
     try:
+        # Usar runspider com arquivo de configuração
         result = subprocess.run([
-            "scrapy", "crawl", "imoveis"
-        ], cwd=str(scrapy_project_path), capture_output=True, text=True, check=True)
+            "scrapy", "runspider", "especulai_scraper/spiders/imoveis_spider.py",
+            "-s", "SETTINGS_MODULE=temp_settings"
+        ], capture_output=True, text=True, check=True)
         return {"status": "success", "output": result.stdout}
     except subprocess.CalledProcessError as e:
         return {"status": "error", "output": e.stderr}

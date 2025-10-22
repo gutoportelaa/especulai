@@ -21,7 +21,7 @@ beautifulsoup4==4.12.2
 
 # Task queue
 celery==5.3.6
-redis==5.0.1
+redis==4.6.0
 
 # Validação de dados
 pydantic==2.5.0

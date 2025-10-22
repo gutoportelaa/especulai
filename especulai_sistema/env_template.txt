@@ -1,0 +1,14 @@
+# Configurações do Banco de Dados PostgreSQL
+DATABASE_URL=postgresql://especulai_user:especulai_senha_123@localhost:5432/especulai_db
+POSTGRES_DB=especulai_db
+POSTGRES_USER=especulai_user
+POSTGRES_PASSWORD=especulai_senha_123
+POSTGRES_HOST=localhost
+
+# Configurações do Celery/Redis
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+# Configurações do Modelo ML
+MODEL_PATH=../ml_pipeline/model.joblib
+PREPROCESSOR_PATH=../ml_pipeline/preprocessor.joblib
