@@ -180,11 +180,3 @@ O modelo é avaliado usando:
    - Monitoramento com Prometheus/Grafana
    - Deploy em cloud (AWS/GCP/Azure)
 
-## Licença
-
-Este projeto é fornecido como exemplo educacional.
-
-## Contato
-
-Para dúvidas ou sugestões sobre o projeto Especulai, entre em contato através dos canais apropriados.
-
