@@ -1,3 +1,7 @@
+
+<img width="1024" height="1024" alt="logoEspeculai" src="https://github.com/user-attachments/assets/85cc721c-f969-4668-80d2-397bb0e079e7" />
+
+
 # Especulai - Sistema de Estimativa de Preços de Imóveis
 
 Sistema completo de Machine Learning para estimativa de preços de imóveis baseado em dados coletados da web. O projeto utiliza arquitetura de microserviços containerizada com Docker e prioriza velocidade de resposta ao usuário final.
