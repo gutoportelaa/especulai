@@ -1,5 +1,5 @@
 
-<img width="128" height="128" alt="logoEspeculai" src="https://github.com/user-attachments/assets/85cc721c-f969-4668-80d2-397bb0e079e7" />
+<p align="center"> <img width="320" height="320" alt="logoEspeculai" src="https://github.com/user-attachments/assets/85cc721c-f969-4668-80d2-397bb0e079e7" />  </p>
 
 
 # Especulai - Sistema de Estimativa de Preços de Imóveis
