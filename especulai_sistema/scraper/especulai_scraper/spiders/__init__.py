@@ -1,1 +1,0 @@
-# Spiders do Scrapy
