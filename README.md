@@ -118,8 +118,8 @@ curl -X POST "http://localhost:8000/predict" \
     "quartos": 3,
     "banheiros": 2,
     "tipo": "apartamento",
-    "bairro": "Jardins",
-    "cidade": "São Paulo"
+    "bairro": "Ininga",
+    "cidade": "Teresina"
   }'
 ```
 

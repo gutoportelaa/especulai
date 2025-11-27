@@ -42,12 +42,51 @@ class ModelService:
         self.reference_values: Dict[str, float] = {}
 
     def load(self) -> None:
+        # Se o caminho configurado não existir, tenta resolver pegando o modelo mais recente da pasta artifacts
         if not os.path.exists(self.model_path):
-            print(f"[AVISO] Modelo nao encontrado em {self.model_path}")
-            return
+            artifacts_dir = Path(self.model_path).parent
+            if artifacts_dir.exists():
+                # Procura arquivos .joblib ordenados por data de modificação (desc)
+                candidates = sorted(artifacts_dir.glob('*.joblib'), key=lambda p: p.stat().st_mtime, reverse=True)
+                if candidates:
+                    self.model_path = str(candidates[0].resolve())
+                    print(f"[INFO] Modelo não encontrado no caminho padrão. Usando modelo mais recente: {self.model_path}")
+                else:
+                    print(f"[AVISO] Nenhum artefato .joblib encontrado em {artifacts_dir}")
+                    return
+            else:
+                print(f"[AVISO] Modelo nao encontrado em {self.model_path}")
+                return
 
         try:
-            artifact = joblib.load(self.model_path)
+            try:
+                artifact = joblib.load(self.model_path)
+            except Exception as e:
+                print(f"[ERRO] Erro ao carregar modelo em {self.model_path}: {e}")
+                # Tenta carregar o modelo mais recente disponível na pasta artifacts
+                artifacts_dir = Path(self.model_path).parent
+                candidates = sorted(artifacts_dir.glob('*.joblib'), key=lambda p: p.stat().st_mtime, reverse=True)
+                # Remove o caminho atual da lista, se presente
+                candidates = [p for p in candidates if str(p.resolve()) != str(Path(self.model_path).resolve())]
+                loaded = False
+                for cand in candidates:
+                    try:
+                        print(f"[INFO] Tentando carregar candidato: {cand}")
+                        artifact = joblib.load(str(cand))
+                        # Aceitamos apenas artefatos que contenham um modelo (dict com key 'model')
+                        # ou objetos que não sejam apenas pré-processadores (não-dict).
+                        is_model_artifact = (isinstance(artifact, dict) and 'model' in artifact) or (not isinstance(artifact, dict))
+                        if not is_model_artifact:
+                            print(f"[INFO] Candidato {cand} não parece conter um modelo - ignorando.")
+                            continue
+                        self.model_path = str(cand.resolve())
+                        loaded = True
+                        break
+                    except Exception as e2:
+                        print(f"[ERRO] Falha ao carregar {cand}: {e2}")
+                        continue
+                if not loaded:
+                    raise
 
             if isinstance(artifact, dict) and "model" in artifact:
                 # Modelo salvo como dicionário completo (formato do train_model.py)
@@ -63,18 +102,17 @@ class ModelService:
             # Se o preprocessor não veio no artifact, tenta carregar separadamente
             if self.preprocessor is None and os.path.exists(self.preprocessor_path):
                 self.preprocessor = joblib.load(self.preprocessor_path)
-
-            # Se ainda não tem preprocessor, cria um básico compatível
+            # Se ainda não tem preprocessor, tenta construir um básico compatível
             if self.preprocessor is None:
-                print("[AVISO] Preprocessor nao encontrado. Criando preprocessor basico compativel...")
+                print("[AVISO] Preprocessor nao encontrado. Vai criar um preprocessor basico compativel...")
                 from sklearn.preprocessing import StandardScaler, LabelEncoder
-                
+
                 # Feature columns padrão
                 self.feature_columns = [
                     'area', 'quartos', 'banheiros', 'densidade_comodos',
                     'tipo_encoded', 'bairro_encoded', 'cidade_encoded'
                 ]
-                
+
                 # Cria label encoders básicos
                 label_encoders = {}
                 for col in ['tipo', 'bairro', 'cidade']:
@@ -87,14 +125,13 @@ class ModelService:
                     elif col == 'cidade':
                         encoder.fit(['teresina'])
                     label_encoders[col] = encoder
-                
+
                 # Cria scaler básico (será ajustado na primeira predição se necessário)
                 scaler = StandardScaler()
-                # Inicializa com valores padrão para 7 features
                 import numpy as np
                 dummy_data = np.array([[100, 3, 2, 0.05, 0, 0, 0]])  # valores padrão
                 scaler.fit(dummy_data)
-                
+
                 self.preprocessor = {
                     'scaler': scaler,
                     'label_encoders': label_encoders,
@@ -103,6 +140,42 @@ class ModelService:
                 }
                 self.reference_values = self.preprocessor['reference_values']
                 print("[OK] Preprocessor basico criado")
+
+            # Se veio um preprocessor parcial (ex: sem label_encoders), garante chaves mínimas
+            # e cria fallbacks quando necessário.
+            if self.preprocessor is not None:
+                # garantir scaler
+                if 'scaler' not in self.preprocessor:
+                    from sklearn.preprocessing import StandardScaler
+                    scaler = StandardScaler()
+                    import numpy as np
+                    scaler.fit(np.zeros((1, 1)))
+                    self.preprocessor['scaler'] = scaler
+
+                # garantir feature_columns
+                if 'feature_columns' not in self.preprocessor:
+                    self.preprocessor['feature_columns'] = self.feature_columns
+
+                # garantir label_encoders
+                if 'label_encoders' not in self.preprocessor:
+                    print('[INFO] label_encoders ausente no preprocessor - criando encoders basicos')
+                    from sklearn.preprocessing import LabelEncoder
+                    label_encoders = {}
+                    for col in ['tipo', 'bairro', 'cidade']:
+                        encoder = LabelEncoder()
+                        if col == 'tipo':
+                            encoder.fit(['apartamento', 'casa', 'sobrado', 'terreno'])
+                        elif col == 'bairro':
+                            encoder.fit(['centro', 'norte', 'sul', 'leste', 'oeste'])
+                        elif col == 'cidade':
+                            encoder.fit(['teresina'])
+                        label_encoders[col] = encoder
+                    self.preprocessor['label_encoders'] = label_encoders
+
+                # garantir reference_values
+                if 'reference_values' not in self.preprocessor:
+                    self.preprocessor['reference_values'] = {'preco_por_m2_median': 5000.0}
+                self.reference_values = self.preprocessor.get('reference_values', {})
 
             if self.preprocessor:
                 self.feature_columns = self.preprocessor.get("feature_columns", self.feature_columns)

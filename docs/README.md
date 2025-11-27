@@ -28,11 +28,8 @@ especulai/
 ### Variáveis de Ambiente Sugeridas (`config/env.template`)
 
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/especulai_db
 MODEL_PATH=../ml/artifacts/modelo_definitivo.joblib
 PREPROCESSOR_PATH=../ml/artifacts/preprocessador.joblib
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
 
 ### Backend (API FastAPI)
@@ -57,16 +54,6 @@ PYTHONPATH=%CD% python -m uvicorn especulai.apps.api.main:app --reload --host 0.
 GET  http://localhost:8000/
 POST http://localhost:8000/predict
 ```
-
-### Celery / Scraper
-
-1. Suba o Redis local (ou use docker-compose da sua infra).
-2. Dispare o worker:
-```bash
-cd especulai
-PYTHONPATH=%CD% python -m celery -A especulai.apps.scraper.celery_app worker --loglevel=info
-```
-3. Use `POST /api/v1/scrape/start` para iniciar uma tarefa de scraping.
 
 ### Treinamento de ML
 

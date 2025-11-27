@@ -218,3 +218,4 @@ ls ../artifacts/modelo_definitivo.joblib
 
 **Pronto!** Seu modelo está treinado e pronto para uso na API. 🎉
 
+
