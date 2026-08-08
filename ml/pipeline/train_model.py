@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 from sklearn.preprocessing import StandardScaler
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
@@ -62,6 +62,15 @@ LEAKAGE_COLUMNS = ("FipeZap_Diferenca_m2",)
 
 # Abaixo disso a mediana do bairro é ruído; cai-se no padrão global.
 MIN_AMOSTRAS_PERFIL_BAIRRO = 3
+
+URL_COLUMN = "URL_Anuncio"
+
+# Um mesmo imóvel reanunciado tem estas colunas idênticas. Serve para manter
+# todas as cópias do mesmo lado do split treino/teste.
+GROUP_KEY_COLUMNS = ("Area_m2", "Quartos", "Banheiros", "Latitude", "Longitude")
+
+# Anúncios abaixo disso são aluguel ou lixo que escapou da limpeza.
+PRECO_MINIMO_VENDA = 50_000.0
 
 # ============================================================================
 # LOGGING
@@ -123,9 +132,46 @@ def load_and_validate_dataset(csv_path: Path) -> pd.DataFrame:
     if nan_count > 0:
         logger.warning(f"[LOAD] {nan_count} valores faltantes em {TARGET_COLUMN}, removendo...")
         df = df.dropna(subset=[TARGET_COLUMN])
-    
+
+    baratos = (df[TARGET_COLUMN] < PRECO_MINIMO_VENDA).sum()
+    if baratos:
+        logger.info(f"[LOAD] {baratos} anúncios abaixo de R$ {PRECO_MINIMO_VENDA:,.0f} removidos (aluguel/ruído)")
+        df = df[df[TARGET_COLUMN] >= PRECO_MINIMO_VENDA]
+
+    df = deduplicate_listings(df)
     logger.info("[LOAD] ✓ Dataset validado com sucesso")
     return df
+
+
+def deduplicate_listings(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove anúncios repetidos.
+
+    O mesmo imóvel é reanunciado várias vezes na OLX (há casos com 27 cópias).
+    Sem isso, o split aleatório coloca cópias do mesmo imóvel em treino e teste,
+    e o modelo memoriza em vez de generalizar — o R² sobe sem que o modelo
+    melhore.
+    """
+    if URL_COLUMN not in df.columns:
+        logger.warning(f"[LOAD] Coluna '{URL_COLUMN}' ausente — deduplicação ignorada")
+        return df
+
+    antes = len(df)
+    df = df.drop_duplicates(subset=[URL_COLUMN]).reset_index(drop=True)
+    if antes != len(df):
+        logger.info(f"[LOAD] Anúncios duplicados removidos: {antes - len(df)} ({antes} -> {len(df)})")
+    return df
+
+
+def listing_groups(df: pd.DataFrame) -> np.ndarray:
+    """Identifica o imóvel físico por trás de cada anúncio.
+
+    Anúncios distintos (URLs diferentes) do mesmo imóvel precisam ficar do mesmo
+    lado do split; caso contrário o teste mede memorização.
+    """
+    chaves = [c for c in GROUP_KEY_COLUMNS if c in df.columns]
+    if not chaves:
+        return np.arange(len(df))
+    return df.groupby(chaves, dropna=False).ngroup().to_numpy()
 
 
 # ============================================================================
@@ -155,6 +201,12 @@ def build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, Stan
     # select_dtypes(np.number) sozinho as descartaria silenciosamente.
     X = df.drop(columns=dropped).select_dtypes(include=[np.number, "bool"]).astype(float)
     y = df[TARGET_COLUMN].values
+
+    # Colunas constantes não carregam informação e poluem o ranking de features.
+    constantes = [c for c in X.columns if X[c].nunique(dropna=False) <= 1]
+    if constantes:
+        logger.info(f"[FEAT] Features constantes removidas: {constantes}")
+        X = X.drop(columns=constantes)
 
     leaked = [c for c in LEAKAGE_COLUMNS if c in df.columns]
     if leaked:
@@ -257,6 +309,44 @@ def train_gradient_boosting(X_train: np.ndarray, y_train: np.ndarray) -> Gradien
     return model
 
 
+def _metricas(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Métricas absolutas e relativas.
+
+    MdAPE e a taxa de acerto em ±20% são as mais informativas aqui: o MAE em
+    reais é dominado pelos imóveis caros, e o R² esconde viés sistemático.
+    """
+    erro_rel = np.abs(y_pred - y_true) / y_true
+    return {
+        "mae": mean_absolute_error(y_true, y_pred),
+        "rmse": math.sqrt(mean_squared_error(y_true, y_pred)),
+        "r2": r2_score(y_true, y_pred),
+        "mdape": float(np.median(erro_rel)),
+        "dentro_20pct": float(np.mean(erro_rel <= 0.20)),
+    }
+
+
+def _metricas_por_faixa(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Erro e viés por faixa de preço, para expor a regressão à média.
+
+    O modelo tende a puxar os extremos para o centro: superestima o barato e
+    subestima o caro. O agregado não mostra isso.
+    """
+    limites = [0, 250_000, 450_000, 800_000, 1_200_000, np.inf]
+    rotulos = ["<250k", "250-450k", "450-800k", "800k-1,2M", ">1,2M"]
+
+    faixas = {}
+    for i, rotulo in enumerate(rotulos):
+        m = (y_true >= limites[i]) & (y_true < limites[i + 1])
+        if not m.any():
+            continue
+        faixas[rotulo] = {
+            "n": int(m.sum()),
+            "mdape": float(np.median(np.abs(y_pred[m] - y_true[m]) / y_true[m])),
+            "vies_mediano": float(np.median((y_pred[m] - y_true[m]) / y_true[m])),
+        }
+    return faixas
+
+
 def evaluate_model(
     model: GradientBoostingRegressor,
     X_train: np.ndarray, X_test: np.ndarray,
@@ -281,16 +371,9 @@ def evaluate_model(
     
     # Métricas
     metrics = {
-        "train": {
-            "mae": mean_absolute_error(y_train, y_pred_train),
-            "rmse": math.sqrt(mean_squared_error(y_train, y_pred_train)),
-            "r2": r2_score(y_train, y_pred_train),
-        },
-        "test": {
-            "mae": mean_absolute_error(y_test, y_pred_test),
-            "rmse": math.sqrt(mean_squared_error(y_test, y_pred_test)),
-            "r2": r2_score(y_test, y_pred_test),
-        }
+        "train": _metricas(y_train, y_pred_train),
+        "test": _metricas(y_test, y_pred_test),
+        "test_por_faixa": _metricas_por_faixa(y_test, y_pred_test),
     }
     
     print("\n" + "=" * 80)
@@ -302,11 +385,18 @@ def evaluate_model(
     print(f"  RMSE: R$ {metrics['train']['rmse']:>12,.2f}")
     print(f"  R²  : {metrics['train']['r2']:>15.4f}")
     
-    print("\n✅ TESTE:")
-    print(f"  MAE : R$ {metrics['test']['mae']:>12,.2f}")
-    print(f"  RMSE: R$ {metrics['test']['rmse']:>12,.2f}")
-    print(f"  R²  : {metrics['test']['r2']:>15.4f}")
-    
+    print("\n✅ TESTE (split por grupo de imóvel):")
+    print(f"  MAE        : R$ {metrics['test']['mae']:>12,.2f}")
+    print(f"  RMSE       : R$ {metrics['test']['rmse']:>12,.2f}")
+    print(f"  R²         : {metrics['test']['r2']:>15.4f}")
+    print(f"  MdAPE      : {metrics['test']['mdape'] * 100:>14.1f}%")
+    print(f"  ±20%       : {metrics['test']['dentro_20pct'] * 100:>14.1f}%")
+
+    print("\n📊 POR FAIXA DE PREÇO (viés > 0 = superestima):")
+    print(f"  {'faixa':<12}{'n':>6}{'MdAPE':>9}{'viés':>9}")
+    for rotulo, m in metrics["test_por_faixa"].items():
+        print(f"  {rotulo:<12}{m['n']:>6}{m['mdape'] * 100:>8.1f}%{m['vies_mediano'] * 100:>8.1f}%")
+
     print("=" * 80 + "\n")
     
     logger.info(f"[EVAL] Métricas teste -> MAE: {metrics['test']['mae']:.2f}, R²: {metrics['test']['r2']:.4f}")
@@ -446,11 +536,20 @@ def main():
         # 2. Construir features
         X_scaled, y, scaler, metadata = build_feature_matrix(df)
         
-        # 3. Divisão treino/teste
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=0.2, random_state=42
+        # 3. Divisão treino/teste — por grupo, para que cópias do mesmo imóvel
+        #    não apareçam dos dois lados e inflem a métrica.
+        grupos = listing_groups(df)
+        idx_train, idx_test = next(
+            GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42).split(
+                X_scaled, y, groups=grupos
+            )
         )
-        logger.info(f"[SPLIT] Treino: {len(X_train)} | Teste: {len(X_test)}")
+        X_train, X_test = X_scaled[idx_train], X_scaled[idx_test]
+        y_train, y_test = y[idx_train], y[idx_test]
+        logger.info(
+            f"[SPLIT] Treino: {len(X_train)} | Teste: {len(X_test)} | "
+            f"grupos distintos: {len(np.unique(grupos))}"
+        )
         
         # 4. Treinar modelo
         model = train_gradient_boosting(X_train, y_train)

@@ -60,34 +60,41 @@ curl -X POST http://localhost:8000/predict \
 ```
 
 ```json
-{ "preco_estimado": 825274.02, "confianca": "alta" }
+{ "preco_estimado": 815821.41, "confianca": "alta" }
 ```
 
 O mesmo imóvel de 85 m², variando apenas o bairro — o modelo reproduz a geografia de preços da cidade:
 
 | Bairro | Estimativa | Confiança |
 |---|---:|---|
-| Jóquei | R$ 825.274 | alta |
-| Fátima | R$ 664.883 | alta |
-| Centro | R$ 359.991 | alta |
-| Itararé | R$ 310.371 | alta |
-| Mocambinho | R$ 309.135 | alta |
-| *(bairro fora do treino)* | R$ 396.932 | **baixa** |
+| Jóquei | R$ 815.821 | alta |
+| Fátima | R$ 686.096 | alta |
+| Centro | R$ 337.074 | alta |
+| Itararé | R$ 311.991 | alta |
+| Mocambinho | R$ 265.061 | alta |
+| *(bairro fora do treino)* | R$ 396.633 | **baixa** |
 
 ---
 
 ## Resultados do modelo
 
-Treinado com **5.644 anúncios** da OLX cobrindo **110 bairros** de Teresina, split 80/20.
+Base: 5.644 anúncios coletados da OLX em 19/11/2025. Após remover 1.028 reanúncios do mesmo
+imóvel e 19 registros abaixo de R$ 50 mil (aluguel misturado com venda), sobram **4.597 anúncios
+únicos** em **110 bairros**.
+
+A avaliação usa **split por grupo de imóvel**, não split aleatório: todas as cópias de um mesmo
+imóvel vão para o mesmo lado da divisão. Sem isso o teste mede memorização.
 
 | Métrica | Treino | Teste |
 |---|---:|---:|
-| MAE | R$ 88.111 | **R$ 114.225** |
-| RMSE | R$ 123.952 | R$ 170.176 |
-| R² | 0,894 | **0,792** |
+| MAE | R$ 86.208 | **R$ 136.782** |
+| RMSE | R$ 121.920 | R$ 211.543 |
+| R² | 0,890 | **0,684** |
+| MdAPE | — | **18,6%** |
+| Acertos dentro de ±20% | — | **52,6%** |
 
-Com preço mediano de R$ 430.000 no conjunto, o erro médio de ~R$ 114 mil equivale a cerca de
-26% do valor típico. É um resultado de baseline honesto para dados de anúncio, não de transação.
+Metade das estimativas cai a menos de 19% do preço anunciado. O MdAPE é a métrica mais honesta
+aqui: o MAE em reais é dominado pelos imóveis caros e o R² esconde viés sistemático.
 
 <table>
 <tr>
@@ -96,20 +103,92 @@ Com preço mediano de R$ 430.000 no conjunto, o erro médio de ~R$ 114 mil equiv
 </tr>
 </table>
 
-Área responde por ~55% da decisão do modelo, seguida por distância a escolas (~16%) e número
-de banheiros (~10%) — as features geoespaciais derivadas do enriquecimento entram logo depois.
+### As features de localização não medem o que o nome diz
 
-### Sobre o vazamento de alvo que foi removido
+Área responde por 54% da decisão do modelo e banheiros por 13%. Em terceiro aparece
+`distancia_escolas`, com 12,6% — e é aqui que mora um problema.
 
-Uma versão anterior deste modelo reportava **R² = 0,99**. O número era falso.
+`distancia_escolas` **não é a distância até a escola mais próxima**. É a distância geodésica até
+um único ponto fixo no bairro Ininga, definido à mão em `POI_REFERENCE_POINTS`. O mesmo vale
+para farmácias, mercados e hospitais: quatro pontos arbitrários no mapa. Verificado contra o
+cálculo direto, o erro máximo é de 0,005 m — são a mesma coisa.
 
-A feature `FipeZap_Diferenca_m2` era, por construção, idêntica a
-`Valor_Anuncio / Area_m2 − FipeZap_m2` — uma transformação algébrica do próprio alvo. O modelo
-não estava aprendendo preço; estava invertendo uma equação. Removida a coluna, o R² caiu de
-0,99 para 0,79, que é o desempenho real.
+Ou seja, as quatro "proximidades" são coordenadas polares em torno de quatro pontos, e estão
+correlacionadas entre si entre 0,59 e 0,90. Elas codificam posição, não acesso a serviços.
 
-O treino hoje rejeita explicitamente colunas derivadas do alvo (`LEAKAGE_COLUMNS` em
-`ml/pipeline/train_model.py`), para que a regressão não volte silenciosamente.
+A ablação confirma que carregam pouca informação própria:
+
+| Configuração | R² | MdAPE |
+|---|---:|---:|
+| Completo | 0,684 | 18,8% |
+| Sem as 4 distâncias e `score_comercial` | 0,674 | 19,2% |
+| Sem `Latitude`/`Longitude` | 0,670 | 18,3% |
+| Sem nenhuma geo contínua (só one-hot de bairro) | 0,668 | 19,7% |
+
+Remover **toda** a geografia contínua custa 1,6 ponto de R² e 0,9 ponto de MdAPE. O one-hot de
+bairro já carrega quase toda a informação de localização que o modelo usa hoje.
+
+Isso não significa que localização importe pouco — significa que **ela ainda não foi medida
+direito**. Ver [Roadmap](#roadmap).
+
+### Vale mais que a regra de bolso?
+
+O concorrente real não é "chutar a média" — é o que um corretor faz de cabeça: área multiplicada
+pelo preço por m² típico do bairro.
+
+| Estimador | MAE | MdAPE | Dentro de ±20% |
+|---|---:|---:|---:|
+| Mediana global | R$ 271.850 | 46,8% | 24,9% |
+| Área × R$/m² global | — | 31,5% | 31,3% |
+| Área × R$/m² do bairro (regra do corretor) | — | 24,0% | 44,4% |
+| **Gradient Boosting** | **R$ 136.782** | **18,6%** | **52,6%** |
+
+O modelo ganha, mas por margem modesta: 24,0% → 18,6% de erro mediano, e 8 pontos a mais de
+acerto dentro de ±20%. O MAE das regras de bolso é omitido porque outliers de área (há anúncios
+com `Area_m2` de 8 milhões) o tornam absurdo — o MdAPE é robusto a isso.
+
+### Onde o modelo erra
+
+<p align="center">
+  <img alt="Viés por faixa de preço" src="docs/screenshots/09-vies-por-faixa.png" width="85%">
+</p>
+
+| Faixa | n | MdAPE | Viés mediano |
+|---|---:|---:|---:|
+| < R$ 250k | 181 | 29,2% | **+28,3%** |
+| R$ 250–450k | 356 | 12,9% | +4,0% |
+| R$ 450–800k | 231 | 18,6% | −5,0% |
+| R$ 800k–1,2M | 109 | 18,3% | −11,9% |
+| > R$ 1,2M | 82 | 27,0% | **−27,0%** |
+
+Regressão à média clássica. O modelo é confiável no miolo do mercado (R$ 250–450 mil, onde está
+a massa dos dados) e sistematicamente enviesado nos extremos — justo onde uma estimativa
+independente seria mais útil. **Use com cautela fora da faixa central.**
+
+### Validação externa
+
+O R$/m² implícito nas predições tem mediana de **R$ 5.829**. O
+[FipeZap para Teresina em jul/2026](https://myside.com.br/guia-imoveis/valor-metro-quadrado-teresina-pi)
+aponta **R$ 6.026** — diferença de 3,3%.
+
+Os dados são de novembro de 2025 e a cidade valorizou 6,38% em 12 meses, o que implica **+4,5%
+de defasagem** nos ~9 meses decorridos. Ou seja: no agregado, o modelo está calibrado, e a
+defasagem temporal é o menor dos seus problemas.
+
+### Dois vazamentos que foram removidos
+
+**1. Feature derivada do alvo.** Uma versão anterior reportava R² = 0,99. A feature
+`FipeZap_Diferenca_m2` era, por identidade exata (erro de 6e-14),
+`Valor_Anuncio / Area_m2 − FipeZap_m2`. O modelo não aprendia preço — invertia uma equação.
+Removida, o R² caiu para 0,79.
+
+**2. Anúncios duplicados no split.** Mesmo com a feature removida, 0,79 continuava otimista:
+o dataset tinha 5.644 linhas para 4.614 URLs, com um imóvel chegando a aparecer 27 vezes. No
+split aleatório, cópias caíam em treino e teste. Com deduplicação e split por grupo, o número
+real é **0,684**.
+
+O treino hoje rejeita colunas derivadas do alvo (`LEAKAGE_COLUMNS`), deduplica por URL e agrupa
+por imóvel físico antes de dividir — as três coisas em `ml/pipeline/train_model.py`.
 
 ---
 
@@ -304,20 +383,37 @@ Este é um projeto em evolução, e vale ser explícito sobre onde ele está:
 - **Sem testes automatizados.** `make test` existe, o diretório `tests/` ainda não.
 - **`POST /api/v1/scrape/start` é um stub** que retorna `501`. O scraping roda por CLI
   (`make scrape`).
-- **Distâncias a POIs usam um ponto fixo por categoria**, não a instalação mais próxima de fato.
-  Migrar para OSM Overpass + KDTree é o próximo passo do enriquecimento.
+- **Viés nos extremos:** +28% abaixo de R$ 250 mil, −27% acima de R$ 1,2 milhão.
+- **Distâncias a POIs medem distância a um ponto fixo**, não à instalação mais próxima — ver a
+  seção sobre features de localização.
 - **Fatores FipeZap por bairro estão hardcoded** em `enriquecimento_economico.py`.
+- **Snapshot único:** todos os dados são de 19/11/2025. Sem série temporal, o modelo não capta
+  tendência; a defasagem estimada hoje é de +4,5%.
 - **Escopo geográfico:** apenas Teresina (PI).
 
 ## Roadmap
 
+A localização é o eixo com maior retorno potencial, e é o menos explorado. Em ordem de valor
+esperado por esforço:
+
+- [ ] **Renda por setor censitário (IBGE 2022)** — o módulo já existe
+      (`ml/pipeline/modules/enriquecimento_ibge.py`) e a correlação medida entre renda média do
+      responsável no setor e preço/m² foi de **0,58**, o sinal de localização mais forte já
+      encontrado no projeto. Falta ligá-lo ao modelo principal.
+- [ ] **POIs reais via OSM Overpass + KDTree** — substituir os quatro pontos fixos por distância
+      à farmácia, escola, mercado, hospital e shopping mais próximos de fato, com contagem de
+      equipamentos num raio.
+- [ ] **CEP como chave de localização** — resolução muito mais fina que bairro. Depende de
+      extrair o CEP do anúncio, que a OLX nem sempre expõe.
+- [ ] Intervalo de predição em vez de ponto estimado, e correção do viés por faixa
 - [ ] Suíte de testes (pytest) cobrindo pipeline e API
-- [ ] Distâncias a POIs via Overpass + KDTree
-- [ ] Features do IBGE (renda por setor censitário) no modelo principal — a correlação medida
-      entre renda do setor e preço/m² foi de **0,58**
-- [ ] Intervalo de predição, não só ponto estimado
-- [ ] Retreino agendado com dados novos
+- [ ] Coleta recorrente para construir série temporal e permitir retreino
 - [ ] Deploy público (API + frontend)
+
+> **Zona eleitoral foi descartada.** O recorte é administrativo-eleitoral, desenhado para
+> equilibrar número de eleitores, e não acompanha a segmentação do mercado imobiliário. O setor
+> censitário do IBGE resolve o mesmo problema com granularidade melhor e traz renda, densidade e
+> número de moradores junto.
 
 ---
 

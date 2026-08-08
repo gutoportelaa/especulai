@@ -124,7 +124,19 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     logger.info("[PREP] Iniciando limpeza e preparação de dados...")
-    
+
+    # ========================================================================
+    # 0. DEDUPLICAÇÃO
+    # ========================================================================
+    # O mesmo imóvel é reanunciado várias vezes na OLX. Se as cópias sobrevivem
+    # até o treino, elas se distribuem entre treino e teste e o modelo é medido
+    # sobre imóveis que já viu. O FipeZap descarta anúncios repetidos pelo mesmo
+    # motivo.
+    if 'URL_Anuncio' in df.columns:
+        antes = len(df)
+        df = df.drop_duplicates(subset=['URL_Anuncio']).reset_index(drop=True)
+        logger.info(f"[PREP] 0. Anúncios duplicados removidos: {antes - len(df)} ({antes} -> {len(df)})")
+
     # ========================================================================
     # 1. CONVERSÃO DE TIPOS
     # ========================================================================

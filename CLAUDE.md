@@ -387,7 +387,9 @@ make clean          # Remove __pycache__, .pyc, caches
 | P6 | Logging não centralizado (cada módulo chama `basicConfig`) | Logs inconsistentes | todos os módulos ML |
 | P7 | Sem testes automatizados (`tests/` não existe, mas `make test` aponta para lá) | Regressões não detectadas | — |
 | P10 | 10 avisos de a11y (`useValidAnchor`) — links placeholder `href="#"` no rodapé | `make web-check` falha | `Footer.jsx`, `Header.jsx` |
-| P11 | Distâncias a POIs usam 1 ponto fixo por categoria, não o mais próximo | Feature geoespacial fraca | `enriquecimento_geoespacial.py` |
+| P11 | Distâncias a POIs medem distância a 1 ponto fixo por categoria (provado: erro máx. 0,005 m contra a geodésica). São coordenadas polares, não acesso a serviços; a ablação mostra que toda a geo contínua vale 1,6pp de R² | Feature geoespacial ilusória | `enriquecimento_geoespacial.py` |
+| P18 | Viés por faixa: +28% abaixo de R$250k, −27% acima de R$1,2M (regressão à média) | Inútil nos extremos | `train_model.py` |
+| P19 | Módulo IBGE existe e mede corr(renda_setor, preço/m²)=0,58, mas não está ligado ao modelo principal | Melhor sinal de localização desperdiçado | `enriquecimento_ibge.py` |
 | P12 | Fatores FipeZap por bairro hardcoded | Dado estático | `enriquecimento_economico.py` |
 
 ### Resolvidos em 2026-08-08
@@ -403,6 +405,9 @@ make clean          # Remove __pycache__, .pyc, caches
 | P14 | **Predição constante**: `_predict_standard` montava features com nomes minúsculos (`area`) que não existiam no modelo (`Area_m2`), zerando o vetor inteiro | Vetor montado por precedência: entrada → one-hot do bairro → perfil mediano do bairro → mediana global |
 | P15 | One-hot de bairro descartado — `select_dtypes(np.number)` ignora colunas `bool` | `include=[np.number, "bool"]`; features passaram de 16 para 123 |
 | P16 | `.gitignore` com `*.json` e `lib/` genéricos excluía `frontend/package.json` e `src/lib/utils.js` | Padrões escopados; frontend agora builda em clone limpo |
+| P20 | **Duplicatas no split**: 5.644 linhas para 4.614 URLs (1 imóvel com 27 cópias); split aleatório colocava cópias em treino e teste, inflando o R² de 0,684 para 0,789 | Dedup por URL + `GroupShuffleSplit` por imóvel físico em `train_model.py` e `prepare_dataset.py` |
+| P21 | `Vagas_Garagem` e `Descricao_Length` eram colunas constantes de zeros | Removidas automaticamente no treino; a coleta precisa passar a preencher vagas de garagem |
+| P22 | 19 anúncios abaixo de R$50k (aluguel misturado com venda) | `PRECO_MINIMO_VENDA` no treino |
 | P17 | `/pipeline/logs`, `/pipeline/stages` retornavam 500 (anotação `Dict[str, List[str]]` vs. payload real) e `/pipeline/info` lia `apps/artifacts` | Anotações corrigidas para `dict[str, Any]`; `info` usa `config.paths.ARTIFACT_DIR` |
 
 > Para lista completa com soluções propostas, ver `CONTEXT.md`.
