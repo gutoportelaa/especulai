@@ -23,6 +23,8 @@ dependencies = [
     # Geoespacial
     "geopy>=2.4.0",
     "overpy>=0.7",
+    "geopandas>=1.1.4",
+    "scipy>=1.17.1",
 ]
 
 [project.optional-dependencies]

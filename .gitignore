@@ -62,3 +62,8 @@ Thumbs.db
 # Variáveis de ambiente
 .env
 .env.local
+
+# Snapshot de POIs: versionado de propósito. O OSM muda todo dia; sem congelar,
+# o treino deixa de ser reproduzível e as métricas publicadas mudam sozinhas.
+!data/pois/
+!data/pois/*.json
