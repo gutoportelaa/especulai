@@ -1,3 +1,12 @@
+# Notas de pesquisa
+
+> Material de trabalho, não documentação. São anotações brutas de brainstorm sobre estratégia
+> de coleta (OLX, rochaerocha), geocodificação e uso da malha censitária do IBGE. Ficam aqui
+> como registro das decisões e dos becos sem saída; o que virou produto está no
+> [README](../README.md) e em [CONTEXT.md](../CONTEXT.md).
+
+---
+
  Aja como um desenvolvedor fullstack sênior, especializado em ciência de dados. Vamos fazer um brainstorm sobre a estratégia de coleta via webcrawling do CEP(ou a malha censitária do IBGE) dos imóveis através da url da OLX, ou de https://www.rochaerocha.com.br/, e a partir desse scraping estimar os demais dados de geolocalização Area_m2,Quartos,Banheiros,Vagas_Garagem,Valor_Anuncio,URL_Anuncio,Data_Coleta,Latitude,Longitude,distancia_farmacias,distancia_escolas,distancia_mercados,distancia_hospitais,score_comercial,FipeZap_m2,FipeZap_Diferenca_m2,Descricao_Length,Bairro_Aeroporto,Bairro_Alegre,Bairro_Alto Alegre, ... . A informação coletada servirá para o treinamento do modelo preditivo do projeto. Dê a preferência por uso de requests e beautifulsoup, se não for possível no caso de OLX, utilize selenium.
 
 Boa — esse é exatamente o gargalo certo pra atacar. Antes de propor código, deixa eu reorganizar o problema, porque a forma como ele está colocado esconde a decisão mais importante.
@@ -535,4 +544,4 @@ Quer que eu siga para o POI/Overpass (fecha o bloco de enriquecimento geoespacia
                                                                sent 33926 chars via OSC 52 · check terminal clipboard settings if paste fails
 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ❯
-───────────────────────────────────
+───────────────────────────────────gi

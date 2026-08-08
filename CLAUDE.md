@@ -382,15 +382,28 @@ make clean          # Remove __pycache__, .pyc, caches
 
 | # | Problema | Impacto | Arquivo(s) |
 |---|---|---|---|
-| P1 | `DATA_ROOT` aponta fora do repo (`../dados_imoveis_teresina/`) | Quebra em clone limpo | `orchestrator.py`, `scraper_olx.py`, `prepare_dataset.py`, `train_model.py` |
-| P2 | Código morto não removido | Confusão | `legacy_main.py`, `old_collector.py` |
 | P3 | `/api/v1/scrape/start` retorna 501 permanentemente | Endpoint inativo | `scrape.py`, `scrape_service.py` |
-| P4 | CORS hardcoded em vez de ler `.env` | Config via código | `main.py` |
 | P5 | `ModelService.load()` constrói artefatos mock em vez de falhar | Erros silenciosos | `model_service.py` |
 | P6 | Logging não centralizado (cada módulo chama `basicConfig`) | Logs inconsistentes | todos os módulos ML |
-| P7 | Sem testes automatizados | Regressões não detectadas | — |
-| P8 | `dataset_fonte_olx.csv` (5 MB) commitado violando `.gitignore` | Repo pesado | `.gitignore` |
-| P9 | `train_model.py` tem bloco `if __name__` duplicado | Dead code | `train_model.py` L final |
+| P7 | Sem testes automatizados (`tests/` não existe, mas `make test` aponta para lá) | Regressões não detectadas | — |
+| P10 | 10 avisos de a11y (`useValidAnchor`) — links placeholder `href="#"` no rodapé | `make web-check` falha | `Footer.jsx`, `Header.jsx` |
+| P11 | Distâncias a POIs usam 1 ponto fixo por categoria, não o mais próximo | Feature geoespacial fraca | `enriquecimento_geoespacial.py` |
+| P12 | Fatores FipeZap por bairro hardcoded | Dado estático | `enriquecimento_economico.py` |
+
+### Resolvidos em 2026-08-08
+
+| # | Problema | Solução |
+|---|---|---|
+| P1 | `DATA_ROOT` apontava para fora do repo | `config/paths.py` centraliza `DATA_ROOT`/`ARTIFACT_DIR`, sobrescrevíveis por env |
+| P2 | Imports `especulai.apps.*` inexistentes — a API não subia | Reescritos para `apps.*` / `ml.*` no código e no Makefile |
+| P4 | CORS hardcoded | Lê `ALLOWED_ORIGINS` (csv) com default de desenvolvimento |
+| P8 | Dataset de 5 MB solto na raiz | Movido para `data/dataset_treino_olx_final.csv`, versionado por exceção explícita no `.gitignore` |
+| P9 | Bloco `if __name__` duplicado (treino rodava 2×) | Removido |
+| P13 | **Vazamento de alvo**: `FipeZap_Diferenca_m2 ≡ Valor_Anuncio/Area_m2 − FipeZap_m2` inflava o R² para 0,99 | `LEAKAGE_COLUMNS` no treino; R² real = 0,79 |
+| P14 | **Predição constante**: `_predict_standard` montava features com nomes minúsculos (`area`) que não existiam no modelo (`Area_m2`), zerando o vetor inteiro | Vetor montado por precedência: entrada → one-hot do bairro → perfil mediano do bairro → mediana global |
+| P15 | One-hot de bairro descartado — `select_dtypes(np.number)` ignora colunas `bool` | `include=[np.number, "bool"]`; features passaram de 16 para 123 |
+| P16 | `.gitignore` com `*.json` e `lib/` genéricos excluía `frontend/package.json` e `src/lib/utils.js` | Padrões escopados; frontend agora builda em clone limpo |
+| P17 | `/pipeline/logs`, `/pipeline/stages` retornavam 500 (anotação `Dict[str, List[str]]` vs. payload real) e `/pipeline/info` lia `apps/artifacts` | Anotações corrigidas para `dict[str, Any]`; `info` usa `config.paths.ARTIFACT_DIR` |
 
 > Para lista completa com soluções propostas, ver `CONTEXT.md`.
 

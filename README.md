@@ -1,199 +1,338 @@
+<p align="center">
+  <img width="160" height="160" alt="Especulai" src="https://github.com/user-attachments/assets/85cc721c-f969-4668-80d2-397bb0e079e7" />
+</p>
 
-<p align="center"> <img width="320" height="320" alt="logoEspeculai" src="https://github.com/user-attachments/assets/85cc721c-f969-4668-80d2-397bb0e079e7" />  </p>
+<h1 align="center">Especulai</h1>
 
+<p align="center">
+  <strong>Estimativa de preços de imóveis em Teresina (PI) com Machine Learning.</strong><br>
+  Do scraping ao modelo em produção, servido por uma API REST e uma interface React.
+</p>
 
-# Especulai - Sistema de Estimativa de Preços de Imóveis
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white">
+  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-1.5-F7931E?logo=scikitlearn&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white">
+  <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white">
+</p>
 
-Sistema completo de Machine Learning para estimativa de preços de imóveis baseado em dados coletados da web. O projeto agora está modularizado dentro da pasta `especulai/`, facilitando o deploy independente de cada componente.
+---
 
-## Visão Geral dos Módulos
+## O problema
 
-| Pasta               | Descrição                                                                 |
-|---------------------|---------------------------------------------------------------------------|
-| `apps/api`          | API FastAPI + rotas de scraping.                                          |
-| `apps/scraper`      | Projeto Scrapy/Celery para coletar os anúncios.                           |
-| `frontend`          | Aplicação React/Tailwind que consome o endpoint `/predict`.               |
-| `ml/pipeline`       | Scripts de treinamento (`train_model.py`, utilitários).                   |
-| `ml/artifacts`      | Artefatos prontos para produção (`modelo_definitivo.joblib`, métricas).   |
-| `notebooks`         | Experimentos no Colab (por exemplo `analise_modelos.ipynb`).              |
-| `config`            | Arquivos de configuração compartilhados (`env.template`).                 |
-| `infra/redis`       | Artefatos de infraestrutura (ex.: `dump.rdb`).                            |
-| `docs`              | Documentação operacional e guias rápidos.                                 |
-| `requirements`      | Listas de dependências segmentadas (`backend.txt`, etc.).                 |
+Quem anuncia ou compra um imóvel em Teresina não tem uma referência objetiva de preço. Os
+anúncios são a única fonte pública, e eles refletem a expectativa do vendedor — não o mercado.
 
-### Componentes Ativos
+O Especulai coleta esses anúncios, os enriquece com contexto geoespacial e econômico, e treina
+um modelo de regressão que devolve uma estimativa em segundos, junto com um nível de confiança
+que diz o quanto o modelo realmente conhece aquele tipo de imóvel naquele bairro.
 
-1. **Scraper** (`apps/scraper/`): coleta dados de portais como OLX e salva no banco relacional configurado por `DATABASE_URL`.
-2. **Pipeline de ML** (`ml/pipeline/`):
-   - Trata dados (remoção de outliers, normalização de features e sanitização de localização de OLX).
-   - Treina modelos baseline (XGBoost) e consolida o Gradient Boosting vencedor.
-   - Exporta artefatos para `ml/artifacts/` (modelo, pré-processador e CSVs de comparação como `comparacao_modelos_full.csv`).
-3. **API REST** (`apps/api/`):
-   - Montada com FastAPI.
-   - Consome os artefatos finalizados (`modelo_definitivo.joblib` com Gradient Boosting + pré-processador).
-   - Exponde `GET /`, `GET /health`, `POST /predict`, `GET /model-info` e `POST /api/v1/scrape/start`.
-4. **Frontend** (`frontend/`):
-   - Responsável pela interface com o botão “Especulai”.
-   - Comunica-se com o backend via `predictImovel()` apontando para `VITE_API_URL`.
+**Entrada:** área, quartos, banheiros, tipo, bairro, cidade
+**Saída:** preço estimado (R$) + confiança (alta / média / baixa)
 
-## Estrutura de Diretórios (detalhada)
+---
+
+## Demonstração
+
+<p align="center">
+  <img alt="Landing page do Especulai" src="docs/screenshots/01-home.png" width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%"><img alt="Formulário de predição" src="docs/screenshots/03-predict-form.png"></td>
+<td width="50%"><img alt="Resultado da predição" src="docs/screenshots/04-predict-result.png"></td>
+</tr>
+<tr>
+<td align="center"><em>Formulário — seis campos, sem cadastro</em></td>
+<td align="center"><em>Resultado com nível de confiança</em></td>
+</tr>
+</table>
+
+### Via API
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"area":85,"quartos":3,"banheiros":2,"tipo":"apartamento","bairro":"Jóquei","cidade":"Teresina"}'
+```
+
+```json
+{ "preco_estimado": 825274.02, "confianca": "alta" }
+```
+
+O mesmo imóvel de 85 m², variando apenas o bairro — o modelo reproduz a geografia de preços da cidade:
+
+| Bairro | Estimativa | Confiança |
+|---|---:|---|
+| Jóquei | R$ 825.274 | alta |
+| Fátima | R$ 664.883 | alta |
+| Centro | R$ 359.991 | alta |
+| Itararé | R$ 310.371 | alta |
+| Mocambinho | R$ 309.135 | alta |
+| *(bairro fora do treino)* | R$ 396.932 | **baixa** |
+
+---
+
+## Resultados do modelo
+
+Treinado com **5.644 anúncios** da OLX cobrindo **110 bairros** de Teresina, split 80/20.
+
+| Métrica | Treino | Teste |
+|---|---:|---:|
+| MAE | R$ 88.111 | **R$ 114.225** |
+| RMSE | R$ 123.952 | R$ 170.176 |
+| R² | 0,894 | **0,792** |
+
+Com preço mediano de R$ 430.000 no conjunto, o erro médio de ~R$ 114 mil equivale a cerca de
+26% do valor típico. É um resultado de baseline honesto para dados de anúncio, não de transação.
+
+<table>
+<tr>
+<td width="58%"><img alt="Importância das features" src="docs/screenshots/07-feature-importance.png"></td>
+<td width="42%"><img alt="Predito versus real" src="docs/screenshots/08-predito-vs-real.png"></td>
+</tr>
+</table>
+
+Área responde por ~55% da decisão do modelo, seguida por distância a escolas (~16%) e número
+de banheiros (~10%) — as features geoespaciais derivadas do enriquecimento entram logo depois.
+
+### Sobre o vazamento de alvo que foi removido
+
+Uma versão anterior deste modelo reportava **R² = 0,99**. O número era falso.
+
+A feature `FipeZap_Diferenca_m2` era, por construção, idêntica a
+`Valor_Anuncio / Area_m2 − FipeZap_m2` — uma transformação algébrica do próprio alvo. O modelo
+não estava aprendendo preço; estava invertendo uma equação. Removida a coluna, o R² caiu de
+0,99 para 0,79, que é o desempenho real.
+
+O treino hoje rejeita explicitamente colunas derivadas do alvo (`LEAKAGE_COLUMNS` em
+`ml/pipeline/train_model.py`), para que a regressão não volte silenciosamente.
+
+---
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+    subgraph Coleta
+        A[OLX<br/>requests + BeautifulSoup]
+        A2[rochaerocha.com.br]
+    end
+    subgraph Enriquecimento
+        B[Geoespacial<br/>Nominatim + POIs]
+        C[Econômico<br/>FipeZap por bairro]
+        D[IBGE<br/>setores censitários 2022]
+    end
+    subgraph Modelagem
+        E[prepare_dataset<br/>limpeza + OHE]
+        F[train_model<br/>GradientBoosting]
+        G[(artefato .joblib<br/>modelo + scaler + perfis)]
+    end
+    subgraph Serviço
+        H[FastAPI<br/>POST /predict]
+        I[React + Vite]
+    end
+    A --> B
+    A2 --> B
+    B --> C --> D --> E --> F --> G --> H --> I
+```
+
+Os cinco estágios são coordenados por `PipelineOrchestrator`, que persiste progresso em
+`data/pipeline_status.json` e pula estágios já concluídos — reexecutar o pipeline é idempotente.
+
+### Como o serviço monta as features
+
+O usuário informa seis campos, mas o modelo espera 123. A diferença é preenchida por
+precedência, no `ModelService`:
+
+1. **Entrada do usuário** — área, quartos, banheiros
+2. **One-hot do bairro** — casado por normalização (sem acento, sem caixa)
+3. **Perfil mediano do bairro** — coordenadas, distâncias a POIs e FipeZap, calculados no
+   treino a partir dos imóveis daquele bairro (95 dos 110 bairros têm perfil)
+4. **Mediana global** — para o que sobrar
+
+O passo 4 importa mais do que parece: preencher com `0.0` faria cada coluna virar um outlier de
+vários desvios após o `StandardScaler`, e a predição colapsava para um valor constante,
+insensível à entrada. Era exatamente o que acontecia antes desta correção.
+
+O nível de confiança sai daí: bairro desconhecido → `baixa`; bairro conhecido mas sem perfil,
+tipo atípico ou área fora de 20–1000 m² → `média`; caso contrário → `alta`.
+
+---
+
+## Começando
+
+**Pré-requisitos:** Python 3.11+, [uv](https://docs.astral.sh/uv/), [bun](https://bun.sh), Node 18+
+
+```bash
+git clone https://github.com/gutoportelaa/especulai.git
+cd especulai
+
+make install        # dependências Python (uv sync)
+make train          # treina o modelo com o dataset versionado (~30s)
+make dev            # API em http://localhost:8000
+```
+
+Em outro terminal:
+
+```bash
+make web-install
+make web-dev        # interface em http://localhost:5173
+```
+
+O repositório inclui `data/dataset_treino_olx_final.csv` (5.644 anúncios já enriquecidos), então
+`make train` funciona logo após o clone — sem precisar rodar o scraping antes.
+
+### Rodando em portas alternativas
+
+```bash
+make dev PORT=8010                                    # API
+ALLOWED_ORIGINS="http://localhost:5174" make dev PORT=8010   # CORS para outra origem
+cd frontend && bunx vite --port 5174                  # frontend
+```
+
+O frontend lê a URL da API de `VITE_API_URL` (`frontend/.env.local`):
+
+```
+VITE_API_URL=http://localhost:8010
+```
+
+---
+
+## API
+
+Documentação interativa em `http://localhost:8000/docs`.
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/` | Health check raiz |
+| `GET` | `/health` | Health check detalhado |
+| `POST` | `/predict` | Estimativa de preço |
+| `POST` | `/api/v1/pipeline/run` | Dispara o pipeline em background |
+| `GET` | `/api/v1/pipeline/status` | Estágio atual e progresso |
+| `GET` | `/api/v1/pipeline/logs` | Últimas linhas de log |
+| `GET` | `/api/v1/pipeline/stages` | Descrição dos estágios |
+| `GET` | `/api/v1/pipeline/info` | Metadados do modelo carregado |
+| `POST` | `/api/v1/pipeline/reset` | Reseta o estado do pipeline |
+| `POST` | `/api/v1/scrape/start` | ⚠️ Stub — retorna `501` |
+
+**`POST /predict`**
+
+```jsonc
+// requisição
+{
+  "area": 85.0,        // m², > 0
+  "quartos": 3,        // >= 0
+  "banheiros": 2,      // >= 0
+  "tipo": "apartamento", // "apartamento" | "casa"
+  "bairro": "Jóquei",
+  "cidade": "Teresina"
+}
+
+// resposta
+{ "preco_estimado": 825274.02, "confianca": "alta" }
+```
+
+Se nenhum modelo estiver carregado, a API não quebra: cai num fallback
+`área × preço_mediano_por_m²` e devolve `confianca: "baixa"`.
+
+---
+
+## Comandos
+
+```bash
+# Backend (uv)
+make install     make dev        make start      make kill-port
+
+# Frontend (bun)
+make web-install make web-dev    make web-build  make web-check
+
+# ML
+make scrape      make prepare    make train      make pipeline
+
+# Qualidade
+make lint        make typecheck  make test       make ci
+```
+
+`make help` lista tudo com descrição.
+
+---
+
+## Estrutura
 
 ```
 especulai/
 ├── apps/
-│   ├── __init__.py
-│   ├── api/
-│   │   ├── main.py
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── models/
-│   └── scraper/
-├── frontend/                 # mantida sem alterações estruturais
+│   ├── api/                 # FastAPI: main, routes/, services/, models/
+│   └── scraper/             # scraper_olx.py, scraper_rocha.py
 ├── ml/
-│   ├── pipeline/train_model.py
-│   └── artifacts/
-│       ├── modelo_definitivo.joblib
-│       └── comparacao_modelos_full.csv
-├── notebooks/
-├── docs/README.md
-├── config/env.template
-├── infra/redis/dump.rdb
-├── requirements/
-│   └── backend.txt
-└── requirements.txt          # agrega os arquivos acima
+│   ├── pipeline/            # orchestrator, prepare_dataset, train_model
+│   │   └── modules/         # enriquecimento geoespacial / econômico / IBGE
+│   └── artifacts/           # modelos .joblib (gerados por make train)
+├── frontend/                # React 19 + Vite + Tailwind
+│   └── src/                 # api/ components/ features/ hooks/ pages/
+├── config/paths.py          # caminhos canônicos do projeto
+├── data/                    # dataset versionado + intermediários do pipeline
+├── docs/                    # guias e screenshots
+└── Makefile                 # ponto de entrada único
 ```
 
-## Instalação e Execução
+---
 
-### Pré-requisitos
-- Python 3.10+
-- Node 18+ (para o frontend)
-- Docker e Docker Compose (para execução containerizada)
+## Stack
 
-### Instalação Local
+| Camada | Tecnologia |
+|---|---|
+| API | FastAPI · Uvicorn · Pydantic v2 |
+| ML | scikit-learn (GradientBoostingRegressor) · pandas · NumPy · joblib |
+| Coleta | requests · BeautifulSoup4 |
+| Geo | geopy (Nominatim) · malha de setores censitários IBGE 2022 |
+| Frontend | React 19 · Vite 5 · Tailwind 3 · framer-motion · lucide-react |
+| Tooling | uv · bun · Ruff · basedpyright · Biome |
 
-1. **Backend / Pipeline**
-```bash
-cd especulai
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements/backend.txt
+---
 
-# Pipeline / Treinamento
-cd ml/pipeline
-python pipeline_ml.py   # atualiza os CSVs em dados_imoveis_teresina/
-python train_model.py   # treina o Gradient Boosting definitivo
+## Limitações conhecidas
 
-# API
-cd ../..
-PYTHONPATH=%CD% uvicorn especulai.apps.api.main:app --reload
-```
+Este é um projeto em evolução, e vale ser explícito sobre onde ele está:
 
-2. **Frontend**
-```bash
-cd especulai/frontend
-npm install
-npm run dev
-```
+- **Preço de anúncio ≠ preço de venda.** O modelo aprende a pedida do vendedor. O desconto real
+  de negociação não está nos dados.
+- **Sem testes automatizados.** `make test` existe, o diretório `tests/` ainda não.
+- **`POST /api/v1/scrape/start` é um stub** que retorna `501`. O scraping roda por CLI
+  (`make scrape`).
+- **Distâncias a POIs usam um ponto fixo por categoria**, não a instalação mais próxima de fato.
+  Migrar para OSM Overpass + KDTree é o próximo passo do enriquecimento.
+- **Fatores FipeZap por bairro estão hardcoded** em `enriquecimento_economico.py`.
+- **Escopo geográfico:** apenas Teresina (PI).
 
-### Execução com Docker
+## Roadmap
 
-1. **Build e iniciar containers**:
-```bash
-docker compose up --build
-```
-2. **Acessar API**:
-   - URL: http://localhost:8000
-   - Documentação interativa: http://localhost:8000/docs
+- [ ] Suíte de testes (pytest) cobrindo pipeline e API
+- [ ] Distâncias a POIs via Overpass + KDTree
+- [ ] Features do IBGE (renda por setor censitário) no modelo principal — a correlação medida
+      entre renda do setor e preço/m² foi de **0,58**
+- [ ] Intervalo de predição, não só ponto estimado
+- [ ] Retreino agendado com dados novos
+- [ ] Deploy público (API + frontend)
 
-## Uso da API
+---
 
-### Exemplo de Requisição
+## Documentação
 
-```bash
-curl -X POST "http://localhost:8000/predict" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "area": 85.0,
-    "quartos": 3,
-    "banheiros": 2,
-    "tipo": "apartamento",
-    "bairro": "Ininga",
-    "cidade": "Teresina"
-  }'
-```
+| Arquivo | Conteúdo |
+|---|---|
+| [`CONTEXT.md`](CONTEXT.md) | Diagnóstico técnico e melhorias priorizadas |
+| [`CLAUDE.md`](CLAUDE.md) | Guia de engenharia: convenções, estrutura, tech debt |
+| [`docs/GUIA_TREINAMENTO.md`](docs/GUIA_TREINAMENTO.md) | Pipeline de ponta a ponta |
+| [`docs/notas-de-pesquisa.md`](docs/notas-de-pesquisa.md) | Anotações brutas de pesquisa (scraping, geocodificação, IBGE) |
+| [`notebooks/`](notebooks/) | Comparação de modelos e avaliação de métricas |
 
-### Exemplo de Resposta
+---
 
-```json
-{
-  "preco_estimado": 450000.00,
-  "confianca": "alta"
-}
-```
+## Licença
 
-## Tecnologias Utilizadas
-
-- **Python 3.9**: Linguagem principal
-- **FastAPI**: Framework web de alta performance
-- **GradientBoostingRegressor**: Modelo de Machine Learning principal
-- **Scikit-learn**: Pré-processamento e métricas
-- **Pandas**: Manipulação de dados
-- **BeautifulSoup**: Web scraping
-- **Docker**: Containerização
-- **Uvicorn**: Servidor ASGI
-
-## Características Técnicas
-
-### Performance
-- Modelo Gradient Boosting otimizado para inferência rápida
-- API assíncrona com FastAPI
-- Pré-processamento eficiente com caching
-
-### Robustez
-- Validação de entrada com Pydantic
-- Tratamento de erros em todos os componentes
-- Health checks para monitoramento
-
-### Escalabilidade
-- Arquitetura de microserviços
-- Containerização com Docker
-- Stateless API para fácil replicação
-
-## Métricas do Modelo
-
-O modelo é avaliado usando:
-- **MAE** (Mean Absolute Error): Erro médio em reais
-- **RMSE** (Root Mean Squared Error): Raiz do erro quadrático médio
-- **R²** (Coefficient of Determination): Qualidade do ajuste
-
-## Segmentação de Datasets e Notebook Analítico
-
-- O pipeline (`ml/pipeline/train_model.py`) gera automaticamente:
-  - `dados_imoveis_teresina/dataset_treino_ml_v1.csv`: dataset completo (sem filtros).
-  - `dados_imoveis_teresina/segmentos/dataset_*.csv`: versões segmentadas por fonte, tipo de negócio e combinações.
-- Execute `python ml/pipeline/train_model.py` após coletar e enriquecer os dados para atualizar todos os arquivos.
-- Utilize o notebook `notebooks/analise_modelos.ipynb` (compatível com Google Colab + GPU) para carregar cada dataset segmentado, treinar o mesmo modelo (XGBoost) e comparar métricas (RMSE e R²). As métricas consolidadas são salvas em `dados_imoveis_teresina/resultados_modelos.csv`.
-
-## Melhorias Futuras
-
-1. **Coleta de Dados**:
-   - Implementar scraping de múltiplos sites
-   - Adicionar agendamento automático de coletas
-
-2. **Modelo**:
-   - Experimentar ensemble de modelos
-   - Implementar validação cruzada
-   - Adicionar features geográficas (coordenadas)
-
-3. **API**:
-   - Adicionar autenticação
-   - Implementar rate limiting
-   - Cache de predições frequentes
-   - Logging estruturado
-
-4. **Infraestrutura**:
-   - CI/CD pipeline
-   - Monitoramento com Prometheus/Grafana
-   - Deploy em cloud (AWS/GCP/Azure)
-
+MIT — veja [LICENSE](LICENSE).
