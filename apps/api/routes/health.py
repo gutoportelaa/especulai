@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from especulai.apps.api.models.schemas import HealthCheck
 
+from apps.api.models.schemas import HealthCheck
 
 router = APIRouter()
 

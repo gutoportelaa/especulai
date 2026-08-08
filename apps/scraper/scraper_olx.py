@@ -11,15 +11,14 @@ Saída: raw_olx.csv com colunas padrão
 NÃO faz: Enriquecimento, múltiplas fontes, lógica de negócio
 """
 
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Any, Optional
 import csv
-import json
-import random
-import time
-import re
 import logging
+import random
+import re
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
@@ -29,7 +28,9 @@ from bs4 import BeautifulSoup
 # ============================================================================
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
-DATA_ROOT = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_ROOT = _DATA_ROOT
 RAW_OLX_FILE = DATA_ROOT / "raw_olx.csv"
 SCRAPER_LOG_FILE = DATA_ROOT / "scraper_olx_log.txt"
 
@@ -104,7 +105,7 @@ def setup_environment():
         logger.info(f"[SETUP] Arquivo CSV já existe: {RAW_OLX_FILE}")
 
 
-def _coerce_int(value: Any) -> Optional[int]:
+def _coerce_int(value: Any) -> int | None:
     """Converte valor para int, retorna None se inválido."""
     if value is None:
         return None
@@ -116,7 +117,7 @@ def _coerce_int(value: Any) -> Optional[int]:
         return None
 
 
-def _coerce_float(value: Any) -> Optional[float]:
+def _coerce_float(value: Any) -> float | None:
     """Converte valor para float, retorna None se inválido."""
     if value is None:
         return None
@@ -147,7 +148,7 @@ def _sleep_random(min_sec: float, max_sec: float):
 # SCRAPING
 # ============================================================================
 
-def fetch_page(url: str, tipo_negocio: str) -> List[Dict[str, Any]]:
+def fetch_page(url: str, tipo_negocio: str) -> list[dict[str, Any]]:
     """
     Coleta anúncios de uma página OLX.
     
@@ -195,7 +196,7 @@ def fetch_page(url: str, tipo_negocio: str) -> List[Dict[str, Any]]:
     return records
 
 
-def _parse_ad_container(container, tipo_negocio: str) -> Optional[Dict[str, Any]]:
+def _parse_ad_container(container, tipo_negocio: str) -> dict[str, Any] | None:
     """
     Extrai informações de um container de anúncio.
     
@@ -262,7 +263,7 @@ def _parse_ad_container(container, tipo_negocio: str) -> Optional[Dict[str, Any]
         return None
 
 
-def save_records(records: List[Dict[str, Any]], append: bool = True):
+def save_records(records: list[dict[str, Any]], append: bool = True):
     """
     Salva registros no arquivo CSV.
     
@@ -356,7 +357,7 @@ def main(
     logger.info("[MAIN] ===== SCRAPING CONCLUÍDO =====")
     print()
     print("=" * 80)
-    print(f"[OK] Scraping concluído!")
+    print("[OK] Scraping concluído!")
     print(f"[OK] Total de registros coletados: {total_records}")
     print(f"[OK] Arquivo salvo: {RAW_OLX_FILE}")
     print("=" * 80)

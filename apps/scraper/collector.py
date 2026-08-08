@@ -1,13 +1,13 @@
 import argparse
-import os
 import csv
-import time
 import json
 import random
 import re
-from pathlib import Path
+import time
+from collections.abc import Iterable
 from datetime import datetime
-from typing import List, Dict, Any, Iterable, Union, Optional
+from pathlib import Path
+from typing import Any
 from urllib.parse import quote_plus
 
 import pandas as pd
@@ -121,7 +121,7 @@ def _ensure_schema_alignment():
         print("Schema do arquivo raw_data.csv atualizado para incluir todas as colunas.")
 
 
-def _build_page_url(tipo_oferta: str, search_term: str, property_types: List[str], page_number: int) -> str:
+def _build_page_url(tipo_oferta: str, search_term: str, property_types: list[str], page_number: int) -> str:
     """Monta a URL completa com filtros (oferta, busca, tipos, paginação)."""
     tipo_normalized = tipo_oferta.lower().strip()
     if tipo_normalized not in {"venda", "aluguel"}:
@@ -152,7 +152,7 @@ def _request_html(url: str) -> str:
     return response.text
 
 
-def _coerce_float(value: Union[str, int, float, None]) -> float:
+def _coerce_float(value: str | int | float | None) -> float:
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -165,12 +165,12 @@ def _coerce_float(value: Union[str, int, float, None]) -> float:
         return None
 
 
-def _coerce_int(value: Union[str, int, float, None]) -> int:
+def _coerce_int(value: str | int | float | None) -> int:
     float_value = _coerce_float(value)
     return int(float_value) if float_value is not None else None
 
 
-def _normalize_cep_string(value: Union[str, None]) -> str:
+def _normalize_cep_string(value: str | None) -> str:
     if not value:
         return ""
     digits = re.sub(r"\D", "", str(value))
@@ -179,7 +179,7 @@ def _normalize_cep_string(value: Union[str, None]) -> str:
     return digits or str(value).strip()
 
 
-def _extract_bairro_from_location(text: Optional[str]) -> str:
+def _extract_bairro_from_location(text: str | None) -> str:
     if not text:
         return ""
 
@@ -206,7 +206,7 @@ def _extract_bairro_from_location(text: Optional[str]) -> str:
     return segments[-1]
 
 
-def _extract_json_payload(html: str) -> Dict[str, Any]:
+def _extract_json_payload(html: str) -> dict[str, Any]:
     """Extrai o payload JSON do script principal (Next.js / Nuxt)."""
     soup = BeautifulSoup(html, "html.parser")
 
@@ -235,7 +235,7 @@ def _extract_json_payload(html: str) -> Dict[str, Any]:
     return {}
 
 
-def _extract_property_attribute(data: Dict[str, Any], candidate_names: Iterable[str]):
+def _extract_property_attribute(data: dict[str, Any], candidate_names: Iterable[str]):
     """Busca atributos dentro da lista 'properties' retornada pela OLX."""
     props = data.get("properties")
     if not isinstance(props, list):
@@ -249,7 +249,7 @@ def _extract_property_attribute(data: Dict[str, Any], candidate_names: Iterable[
     return None
 
 
-def _iter_dicts(node: Any) -> Iterable[Dict[str, Any]]:
+def _iter_dicts(node: Any) -> Iterable[dict[str, Any]]:
     """Itera recursivamente sobre todos os dicionários de uma estrutura."""
     stack = [node]
     while stack:
@@ -261,7 +261,7 @@ def _iter_dicts(node: Any) -> Iterable[Dict[str, Any]]:
             stack.extend(current)
 
 
-def _extract_ads_from_payload(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _extract_ads_from_payload(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Procura candidatos a anúncios dentro do payload JSON."""
     ads = []
     seen_ids = set()
@@ -286,7 +286,7 @@ def _extract_ads_from_payload(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return ads
 
 
-def _extract_listing_urls_from_dom(html: str) -> List[str]:
+def _extract_listing_urls_from_dom(html: str) -> list[str]:
     """Extrai URLs de anúncios a partir da estrutura de componentes da página."""
     soup = BeautifulSoup(html, "html.parser")
     selectors = [
@@ -295,7 +295,7 @@ def _extract_listing_urls_from_dom(html: str) -> List[str]:
         'a[data-lurker_list_id]'
     ]
 
-    urls: List[str] = []
+    urls: list[str] = []
     seen = set()
     for selector in selectors:
         for anchor in soup.select(selector):
@@ -314,7 +314,7 @@ def _extract_listing_urls_from_dom(html: str) -> List[str]:
     return urls
 
 
-def _extract_location(data: Dict[str, Any]) -> Dict[str, Any]:
+def _extract_location(data: dict[str, Any]) -> dict[str, Any]:
     location = {}
     raw_location = data.get("location") or data.get("address")
     if isinstance(raw_location, dict):
@@ -332,7 +332,7 @@ def _extract_location(data: Dict[str, Any]) -> Dict[str, Any]:
     return location
 
 
-def _safe_get(obj: Dict[str, Any], *keys, default=None):
+def _safe_get(obj: dict[str, Any], *keys, default=None):
     current = obj
     for key in keys:
         if not isinstance(current, dict):
@@ -341,7 +341,7 @@ def _safe_get(obj: Dict[str, Any], *keys, default=None):
     return current if current is not None else default
 
 
-def _normalize_business(data: Dict[str, Any]) -> str:
+def _normalize_business(data: dict[str, Any]) -> str:
     business = data.get("business") or _safe_get(data, "category", "business")
     if isinstance(business, str):
         return "Venda" if "vend" in business.lower() else "Aluguel"
@@ -353,21 +353,21 @@ def _normalize_business(data: Dict[str, Any]) -> str:
     return "Aluguel"
 
 
-def _normalize_property_type(data: Dict[str, Any]) -> str:
+def _normalize_property_type(data: dict[str, Any]) -> str:
     tipo = _safe_get(data, "category", "label") or _safe_get(data, "category", "name")
     if not tipo:
         tipo = _safe_get(data, "properties", "property_type") or data.get("type")
     return tipo or "Imóvel"
 
 
-def _normalize_description(data: Dict[str, Any]) -> str:
+def _normalize_description(data: dict[str, Any]) -> str:
     description = data.get("description") or data.get("body")
     if description:
         return description.strip()
     return ""
 
 
-def _normalize_bairro(location: Dict[str, Any]) -> str:
+def _normalize_bairro(location: dict[str, Any]) -> str:
     bairro = (
         location.get("neighbourhood")
         or location.get("suburb")
@@ -378,7 +378,7 @@ def _normalize_bairro(location: Dict[str, Any]) -> str:
     return location.get("city") or ""
 
 
-def _normalize_cep(location: Dict[str, Any]) -> str:
+def _normalize_cep(location: dict[str, Any]) -> str:
     cep = (
         location.get("zip_code")
         or location.get("postal_code")
@@ -392,7 +392,7 @@ def _normalize_cep(location: Dict[str, Any]) -> str:
     return cep
 
 
-def _normalize_rooms(data: Dict[str, Any], field_names: Iterable[str]) -> int:
+def _normalize_rooms(data: dict[str, Any], field_names: Iterable[str]) -> int:
     for field in field_names:
         value = data.get(field) or _safe_get(data, "realEstate", field) or _safe_get(data, "real_estate_data", field)
         if value is not None:
@@ -408,7 +408,7 @@ def _normalize_rooms(data: Dict[str, Any], field_names: Iterable[str]) -> int:
     return 0
 
 
-def _normalize_area(data: Dict[str, Any]) -> float:
+def _normalize_area(data: dict[str, Any]) -> float:
     area = (
         data.get("usableAreas")
         or data.get("usableArea")
@@ -428,7 +428,7 @@ def _normalize_area(data: Dict[str, Any]) -> float:
     return _coerce_float(area)
 
 
-def _normalize_price(data: Dict[str, Any]) -> float:
+def _normalize_price(data: dict[str, Any]) -> float:
     price = data.get("price") or data.get("priceValue") or _safe_get(data, "pricing", "price")
     if isinstance(price, dict):
         value = price.get("value") or price.get("amount")
@@ -439,11 +439,11 @@ def _normalize_price(data: Dict[str, Any]) -> float:
 
 
 def _build_property_record(
-    ad: Dict[str, Any],
+    ad: dict[str, Any],
     default_tipo_negocio: str = "",
     source_url: str = "",
     fonte_label: str = DEFAULT_FONTE_LABEL
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     location = _extract_location(ad)
     now = datetime.now().strftime("%Y-%m-%d")
 
@@ -476,11 +476,11 @@ def _build_property_record(
     return record
 
 
-def extract_property_data_from_listing(page_html: str, default_tipo_negocio: str, fonte_label: str) -> List[Dict[str, Any]]:
+def extract_property_data_from_listing(page_html: str, default_tipo_negocio: str, fonte_label: str) -> list[dict[str, Any]]:
     payload = _extract_json_payload(page_html)
     ads = _extract_ads_from_payload(payload)
 
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for ad in ads:
         record = _build_property_record(
             ad,
@@ -493,7 +493,7 @@ def extract_property_data_from_listing(page_html: str, default_tipo_negocio: str
     return records
 
 
-def _fetch_detail_record(url: str, default_tipo_negocio: str, fonte_label: str) -> Dict[str, Any]:
+def _fetch_detail_record(url: str, default_tipo_negocio: str, fonte_label: str) -> dict[str, Any]:
     """Busca dados completos acessando a página do anúncio."""
     try:
         html = _request_html(url)
@@ -519,8 +519,8 @@ def _fetch_detail_record(url: str, default_tipo_negocio: str, fonte_label: str) 
 
 # --- Rocha & Rocha helpers ------------------------------------------------- #
 
-def _parse_rocha_listing_card(card) -> Dict[str, Any]:
-    data: Dict[str, Any] = {
+def _parse_rocha_listing_card(card) -> dict[str, Any]:
+    data: dict[str, Any] = {
         "summary_features": [li.get_text(" ", strip=True) for li in card.select(".facilities-list li")]
     }
 
@@ -561,7 +561,7 @@ def _parse_rocha_listing_card(card) -> Dict[str, Any]:
     return data
 
 
-def _extract_rocha_total_pages(soup: BeautifulSoup) -> Optional[int]:
+def _extract_rocha_total_pages(soup: BeautifulSoup) -> int | None:
     pages = []
     for link in soup.select("ul.pagination li a"):
         text = link.get_text(strip=True)
@@ -572,7 +572,7 @@ def _extract_rocha_total_pages(soup: BeautifulSoup) -> Optional[int]:
     return None
 
 
-def _extract_reference_text(container: Optional[BeautifulSoup]) -> str:
+def _extract_reference_text(container: BeautifulSoup | None) -> str:
     if not container:
         return ""
     strong = container.find("strong")
@@ -590,7 +590,7 @@ def _extract_reference_text(container: Optional[BeautifulSoup]) -> str:
     return ""
 
 
-def _apply_rocha_feature(text: str, target: Dict[str, Any]):
+def _apply_rocha_feature(text: str, target: dict[str, Any]):
     if not text:
         return
     normalized = text.lower()
@@ -616,7 +616,7 @@ def _apply_rocha_feature(text: str, target: Dict[str, Any]):
                 target["Area_m2"] = value
 
 
-def _fetch_rocha_detail_info(url: str) -> Optional[Dict[str, Any]]:
+def _fetch_rocha_detail_info(url: str) -> dict[str, Any] | None:
     try:
         html = _request_html(url)
     except requests.RequestException as exc:
@@ -624,7 +624,7 @@ def _fetch_rocha_detail_info(url: str) -> Optional[Dict[str, Any]]:
         return None
 
     soup = BeautifulSoup(html, "html.parser")
-    detail: Dict[str, Any] = {
+    detail: dict[str, Any] = {
         "feature_texts": [li.get_text(" ", strip=True) for li in soup.select(".properties-condition li")],
         "descricao": "",
     }
@@ -689,12 +689,12 @@ def _fetch_rocha_detail_info(url: str) -> Optional[Dict[str, Any]]:
     return detail
 
 
-def _build_rocha_record(listing_data: Dict[str, Any], fonte_label: str) -> Optional[Dict[str, Any]]:
+def _build_rocha_record(listing_data: dict[str, Any], fonte_label: str) -> dict[str, Any] | None:
     detail = _fetch_rocha_detail_info(listing_data.get("detail_url", ""))
     if detail is None:
         return None
 
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "ID_Imovel": detail.get("id") or listing_data.get("id"),
         "Tipo_Negocio": detail.get("business") or "Venda",
         "Tipo_Imovel": detail.get("tipo_imovel") or listing_data.get("tipo_imovel") or "Imóvel",
@@ -737,8 +737,8 @@ def _build_rocha_record(listing_data: Dict[str, Any], fonte_label: str) -> Optio
 
 
 def scrape_rocha_rocha(
-    max_pages_per_type: Optional[int] = None,
-    property_type_ids: Optional[List[str]] = None,
+    max_pages_per_type: int | None = None,
+    property_type_ids: list[str] | None = None,
     fonte_label: str = ROCHA_FONTE_LABEL
 ) -> int:
     property_type_ids = property_type_ids or ROCHA_PROPERTY_TYPES
@@ -748,7 +748,7 @@ def scrape_rocha_rocha(
     for tipo in property_type_ids:
         print(f"\nColetando imóveis Rocha & Rocha | Tipo {tipo}")
         page = 1
-        detected_pages: Optional[int] = None
+        detected_pages: int | None = None
 
         while True:
             if max_pages_per_type and page > max_pages_per_type:
@@ -782,7 +782,7 @@ def scrape_rocha_rocha(
                 print("  -> Nenhum imóvel encontrado nesta página.")
                 break
 
-            page_records: List[Dict[str, Any]] = []
+            page_records: list[dict[str, Any]] = []
             for card in cards:
                 listing_data = _parse_rocha_listing_card(card)
                 detail_url = listing_data.get("detail_url")
@@ -816,8 +816,8 @@ def scrape_rocha_rocha(
 
 
 def main_scraper_rocha(
-    max_pages_per_type: Optional[int] = None,
-    property_type_ids: Optional[List[str]] = None,
+    max_pages_per_type: int | None = None,
+    property_type_ids: list[str] | None = None,
     fonte_label: str = ROCHA_FONTE_LABEL
 ):
     """Executa a coleta dedicada da imobiliária Rocha & Rocha."""
@@ -832,9 +832,9 @@ def scrape_listing_page(
     page_number: int,
     tipo_oferta: str,
     search_term: str,
-    property_types: List[str],
+    property_types: list[str],
     fonte_label: str
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Coleta dados reais de uma página de listagem da OLX.
     """
@@ -871,8 +871,8 @@ def scrape_listing_page(
     return detail_records
 
 def save_data_incrementally(
-    data: List[Dict[str, Any]],
-    output_file: Union[str, Path] = OUTPUT_FILE
+    data: list[dict[str, Any]],
+    output_file: str | Path = OUTPUT_FILE
 ):
     """Salva os dados coletados incrementalmente no arquivo CSV especificado."""
     if not data:
@@ -897,7 +897,7 @@ def main_scraper(
     num_pages: int = 3,
     tipo_oferta: str = DEFAULT_TIPO_OFERTA,
     search_term: str = DEFAULT_SEARCH_TERM,
-    property_types: List[str] = None,
+    property_types: list[str] = None,
     fonte_label: str = DEFAULT_FONTE_LABEL
 ):
     """Função principal do scraper."""

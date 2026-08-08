@@ -13,13 +13,11 @@ Responsabilidades:
 Não faz: Validação de dados brutos, limpeza
 """
 
+import logging
 import math
-import os
 import random
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-import logging
 
 import pandas as pd
 from geopy.distance import geodesic
@@ -31,7 +29,9 @@ from geopy.geocoders import Nominatim
 # ============================================================================
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-DATA_DIR = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_DIR = _DATA_ROOT
 
 # Entrada: dados brutos OLX
 INPUT_FILE = DATA_DIR / "raw_olx.csv"
@@ -110,7 +110,7 @@ def is_valid_text(value) -> bool:
     return text not in ("", "nan", "none", "Nan")
 
 
-def normalize_key(value) -> Optional[str]:
+def normalize_key(value) -> str | None:
     """Normaliza texto para uso como chave de cache."""
     if not is_valid_text(value):
         return None
@@ -123,7 +123,7 @@ def normalize_key(value) -> Optional[str]:
 # CACHE DE GEOCODIFICAÇÃO
 # ============================================================================
 
-def load_geocode_cache() -> Dict[str, Tuple[float, float]]:
+def load_geocode_cache() -> dict[str, tuple[float, float]]:
     """Carrega cache de geocodificação do disco."""
     if not GEOCODE_CACHE_FILE.exists():
         logger.info("[CACHE] Nenhum cache anterior encontrado")
@@ -142,7 +142,7 @@ def load_geocode_cache() -> Dict[str, Tuple[float, float]]:
         return {}
 
 
-def save_geocode_cache(cache: Dict[str, Tuple[float, float]]):
+def save_geocode_cache(cache: dict[str, tuple[float, float]]):
     """Salva cache de geocodificação em disco."""
     if not cache:
         return
@@ -165,7 +165,7 @@ def save_geocode_cache(cache: Dict[str, Tuple[float, float]]):
 # GEOCODIFICAÇÃO (Nominatim/OpenStreetMap)
 # ============================================================================
 
-def geocode_location_api(cep: str, bairro: str) -> Optional[Tuple[float, float]]:
+def geocode_location_api(cep: str, bairro: str) -> tuple[float, float] | None:
     """
     Converte CEP ou Bairro em coordenadas (Latitude, Longitude).
     
@@ -217,9 +217,9 @@ def geocode_location_api(cep: str, bairro: str) -> Optional[Tuple[float, float]]
 def resolve_coordinates(
     cep: str,
     bairro: str,
-    cache: Dict[str, Tuple[float, float]],
+    cache: dict[str, tuple[float, float]],
     use_api: bool = True
-) -> Tuple[Tuple[float, float], bool]:
+) -> tuple[tuple[float, float], bool]:
     """
     Resolve coordenadas para um endereço (com cache e fallback).
     
@@ -273,7 +273,7 @@ def resolve_coordinates(
 # CÁLCULO DE FEATURES GEOESPACIAIS
 # ============================================================================
 
-def compute_poi_features(lat: float, lon: float) -> Dict[str, float]:
+def compute_poi_features(lat: float, lon: float) -> dict[str, float]:
     """
     Calcula features geoespaciais baseadas em POIs.
     
@@ -291,7 +291,7 @@ def compute_poi_features(lat: float, lon: float) -> Dict[str, float]:
     Returns:
         Dicionário com features calculadas
     """
-    features: Dict[str, float] = {}
+    features: dict[str, float] = {}
     
     # Calcula distância para cada POI
     for key, ref_coord in POI_REFERENCE_POINTS.items():
@@ -382,7 +382,7 @@ def enrich_data(df: pd.DataFrame, skip_api: bool = False) -> pd.DataFrame:
     if cache_updated:
         save_geocode_cache(cache)
     
-    logger.info(f"[ENRICH] ✓ Enriquecimento concluído")
+    logger.info("[ENRICH] ✓ Enriquecimento concluído")
     
     return df
 

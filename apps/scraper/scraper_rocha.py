@@ -31,7 +31,6 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -133,7 +132,7 @@ def build_session() -> requests.Session:
     return session
 
 
-def fetch(session: requests.Session, url: str) -> Optional[str]:
+def fetch(session: requests.Session, url: str) -> str | None:
     """GET seguindo redirects (barra final), com Referer da home."""
     try:
         resp = session.get(
@@ -184,7 +183,7 @@ def harvest_listing_urls(
 # PARSE DE DETALHE
 # ============================================================================
 
-def _num(pattern: str, text: str, cast=float) -> Optional[float]:
+def _num(pattern: str, text: str, cast=float) -> float | None:
     m = re.search(pattern, text, re.IGNORECASE)
     if not m:
         return None
@@ -195,7 +194,7 @@ def _num(pattern: str, text: str, cast=float) -> Optional[float]:
         return None
 
 
-def parse_detail(html: str, url: str) -> Optional[dict]:
+def parse_detail(html: str, url: str) -> dict | None:
     """Extrai campos crus de uma página de detalhe."""
     soup = BeautifulSoup(html, "lxml")
     text = re.sub(r"\s+", " ", soup.get_text(" "))
@@ -299,7 +298,7 @@ def _save_geocode_cache(cache: dict[str, tuple[float, float, str]]) -> None:
             writer.writerow([addr, lat, lon, prec])
 
 
-def _nominatim(address: str) -> Optional[tuple[float, float]]:
+def _nominatim(address: str) -> tuple[float, float] | None:
     """Geocodifica via Nominatim (respeita política de uso)."""
     try:
         resp = requests.get(
@@ -319,7 +318,7 @@ def _nominatim(address: str) -> Optional[tuple[float, float]]:
 
 def geocode_escada(
     endereco: str, bairro: str, cache: dict[str, tuple[float, float, str]]
-) -> tuple[Optional[float], Optional[float], str]:
+) -> tuple[float | None, float | None, str]:
     """Resolve lat/lon pela escada de precisão, com cache."""
     if endereco and endereco in cache:
         return cache[endereco]
@@ -349,7 +348,7 @@ def geocode_escada(
 def main(
     max_pages_comprar: int = 1,
     max_pages_alugar: int = 0,
-    limit: Optional[int] = None,
+    limit: int | None = None,
     geocode: bool = True,
 ) -> Path:
     """

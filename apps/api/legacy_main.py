@@ -3,12 +3,12 @@ API REST para servir predições de preços de imóveis.
 Construída com FastAPI para alta performance e validação automática.
 """
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, validator
+import os
+
 import joblib
 import numpy as np
-from typing import Dict, Optional
-import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, validator
 
 
 # Modelos Pydantic para validação de dados
@@ -141,7 +141,7 @@ async def health_check():
 
 
 @app.post("/predict", response_model=PredictionOutput)
-async def predict_price(imovel: ImovelInput) -> Dict:
+async def predict_price(imovel: ImovelInput) -> dict:
     """
     Endpoint para predição de preço de imóvel.
     

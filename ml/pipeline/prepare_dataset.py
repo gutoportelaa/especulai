@@ -14,15 +14,17 @@ Responsabilidades:
 Não faz: Normalização (feita no train_model.py com StandardScaler)
 """
 
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, List
 import logging
-import pandas as pd
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
-DATA_ROOT = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_ROOT = _DATA_ROOT
 
 ECONOMIC_FILE = DATA_ROOT / "enriched_economic_olx.csv"
 FINAL_FILE = DATA_ROOT / "dataset_treino_olx_final.csv"

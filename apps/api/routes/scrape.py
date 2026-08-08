@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from especulai.apps.api.services.scrape_service import start_scrapy_task
 
+from apps.api.services.scrape_service import start_scrapy_task
 
 router = APIRouter()
 

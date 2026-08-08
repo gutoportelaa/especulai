@@ -13,19 +13,20 @@ Responsabilidades:
 Não faz: Limpeza, validação de dados brutos
 """
 
-from pathlib import Path
-from typing import Dict, Optional
 import logging
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # ============================================================================
 # CONFIGURAÇÕES
 # ============================================================================
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-DATA_DIR = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_DIR = _DATA_ROOT
 
 # Entrada: dados com geolocalização
 INPUT_FILE = DATA_DIR / "enriched_geo_olx.csv"
@@ -41,7 +42,7 @@ ECO_LOG_FILE = DATA_DIR / "enriquecimento_economico_log.txt"
 
 # Fatores de ajuste por bairro (multiplicadores do valor base FipeZap)
 # Valores > 1.0 = mais premium, Valores < 1.0 = mais popular
-BAIRRO_FACTORS: Dict[str, float] = {
+BAIRRO_FACTORS: dict[str, float] = {
     'Fátima': 1.18,
     'Jóquei Clube': 1.12,
     'Morada do Sol': 1.08,
@@ -77,7 +78,7 @@ logger = setup_logging()
 # CARREGAMENTO DE DADOS DE REFERÊNCIA
 # ============================================================================
 
-def load_fipezap_reference() -> Dict[str, float]:
+def load_fipezap_reference() -> dict[str, float]:
     """
     Carrega valores de referência FipeZap de Teresina.
     
@@ -138,7 +139,7 @@ def load_fipezap_reference() -> Dict[str, float]:
 def lookup_fipezap_value(
     bairro: str,
     tipo_negocio: str,
-    reference: Dict[str, float]
+    reference: dict[str, float]
 ) -> float:
     """
     Calcula valor FipeZap para um imóvel baseado em bairro e tipo de negócio.
@@ -177,7 +178,7 @@ def lookup_fipezap_value(
 # ENRIQUECIMENTO
 # ============================================================================
 
-def enrich_economic_data(df: pd.DataFrame, reference: Dict[str, float]) -> pd.DataFrame:
+def enrich_economic_data(df: pd.DataFrame, reference: dict[str, float]) -> pd.DataFrame:
     """
     Enriquece dados com informações econômicas.
     

@@ -2,13 +2,15 @@
 Ponto de entrada da API FastAPI modularizada.
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from especulai.apps.api.routes.health import router as health_router
-from especulai.apps.api.routes.predict import router as predict_router
-from especulai.apps.api.routes.scrape import router as scrape_router
-from especulai.apps.api.routes.pipeline import router as pipeline_router
 
+from apps.api.routes.health import router as health_router
+from apps.api.routes.pipeline import router as pipeline_router
+from apps.api.routes.predict import router as predict_router
+from apps.api.routes.scrape import router as scrape_router
 
 app = FastAPI(
     title="Especulai API",
@@ -16,10 +18,18 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configuração de CORS
+DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+
+# CORS via ALLOWED_ORIGINS (csv) para não exigir alteração de código por ambiente.
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],  # Adicione outras origens se necessário
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],  # Permite todos os métodos (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Permite todos os headers

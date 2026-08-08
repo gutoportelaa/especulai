@@ -1,20 +1,19 @@
-import { useState } from 'react'
+import { useState } from "react";
 
 export function useMobileMenu() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const toggleMenu = () => {
-    setMobileMenuOpen(prev => !prev)
-  }
+	const toggleMenu = () => {
+		setMobileMenuOpen((prev) => !prev);
+	};
 
-  const closeMenu = () => {
-    setMobileMenuOpen(false)
-  }
+	const closeMenu = () => {
+		setMobileMenuOpen(false);
+	};
 
-  return {
-    mobileMenuOpen,
-    toggleMenu,
-    closeMenu
-  }
+	return {
+		mobileMenuOpen,
+		toggleMenu,
+		closeMenu,
+	};
 }
-

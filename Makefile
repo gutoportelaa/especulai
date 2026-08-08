@@ -67,10 +67,10 @@ install-dev:
 	uv sync --extra dev
 
 dev:
-	uv run uvicorn especulai.apps.api.main:app --reload --host 0.0.0.0 --port $(PORT)
+	uv run uvicorn apps.api.main:app --reload --host 0.0.0.0 --port $(PORT)
 
 start:
-	uv run uvicorn especulai.apps.api.main:app --host 0.0.0.0 --port $(PORT)
+	uv run uvicorn apps.api.main:app --host 0.0.0.0 --port $(PORT)
 
 kill-port:
 	@lsof -ti :$(PORT) | xargs kill -9 2>/dev/null || echo "Nenhum processo na porta $(PORT)"
@@ -99,16 +99,16 @@ web-fix:
 # =============================================================================
 
 pipeline:
-	uv run python -m especulai.ml.pipeline.orchestrator
+	uv run python -m ml.pipeline.orchestrator
 
 train:
-	uv run python -m especulai.ml.pipeline.train_model
+	uv run python -m ml.pipeline.train_model
 
 scrape:
-	uv run python -m especulai.apps.scraper.scraper_olx
+	uv run python -m apps.scraper.scraper_olx
 
 prepare:
-	uv run python -m especulai.ml.pipeline.prepare_dataset
+	uv run python -m ml.pipeline.prepare_dataset
 
 # =============================================================================
 # QUALIDADE DE CÓDIGO

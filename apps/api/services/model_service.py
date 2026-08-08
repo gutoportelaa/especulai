@@ -3,10 +3,11 @@ Serviço responsável por carregar modelo e pré-processador e realizar prediç�
 """
 
 import os
+import unicodedata
+from pathlib import Path
+
 import joblib
 import numpy as np
-from pathlib import Path
-from typing import Dict
 
 
 class ModelService:
@@ -39,7 +40,7 @@ class ModelService:
         self.model = None
         self.preprocessor = None
         self.feature_columns = []
-        self.reference_values: Dict[str, float] = {}
+        self.reference_values: dict[str, float] = {}
 
     def load(self) -> None:
         # Se o caminho configurado não existir, tenta resolver pegando o modelo mais recente da pasta artifacts
@@ -105,7 +106,7 @@ class ModelService:
             # Se ainda não tem preprocessor, tenta construir um básico compatível
             if self.preprocessor is None:
                 print("[AVISO] Preprocessor nao encontrado. Vai criar um preprocessor basico compativel...")
-                from sklearn.preprocessing import StandardScaler, LabelEncoder
+                from sklearn.preprocessing import LabelEncoder, StandardScaler
 
                 # Feature columns padrão
                 self.feature_columns = [
@@ -192,7 +193,7 @@ class ModelService:
         # O modelo está pronto se tiver modelo e preprocessor
         return self.model is not None and self.preprocessor is not None
 
-    def predict(self, features_dict: Dict) -> Dict:
+    def predict(self, features_dict: dict) -> dict:
         # Detecta o tipo de modelo e obtém as features esperadas
         model_type = type(self.model).__name__
         
@@ -209,7 +210,7 @@ class ModelService:
         # Para outros modelos (GradientBoostingRegressor, etc.), usa o método padrão
         return self._predict_standard(features_dict)
     
-    def _predict_xgboost(self, features_dict: Dict, expected_features: list) -> Dict:
+    def _predict_xgboost(self, features_dict: dict, expected_features: list) -> dict:
         """Predição para modelo XGBRegressor com features enriquecidas"""
         area = max(float(features_dict.get('area', 100)), 1.0)
         quartos = int(features_dict.get('quartos', 2))
@@ -247,68 +248,84 @@ class ModelService:
         
         return {"preco_estimado": float(prediction), "confianca": confianca}
     
-    def _predict_standard(self, features_dict: Dict) -> Dict:
-        """Predição para modelos padrão (GradientBoostingRegressor, etc.)"""
-        scaler = self.preprocessor['scaler']
-        label_encoders = self.preprocessor['label_encoders']
+    @staticmethod
+    def _normalize_bairro(value: str) -> str:
+        """Chave de comparação de bairro: sem acento, sem caixa, sem separadores."""
+        base = unicodedata.normalize("NFKD", str(value))
+        base = "".join(ch for ch in base if not unicodedata.combining(ch))
+        return "".join(ch for ch in base.lower() if ch.isalnum())
 
-        area = max(float(features_dict['area']), 1.0)
-        quartos = int(features_dict['quartos'])
-        banheiros = int(features_dict['banheiros'])
-        tipo_val = str(features_dict['tipo']).lower().strip()
-        bairro_val = str(features_dict['bairro']).strip()
-        cidade_val = str(features_dict['cidade']).strip()
+    def _resolve_bairro(self, bairro_raw: str):
+        """Casa o bairro informado com uma coluna one-hot do modelo.
 
-        densidade_comodos = (quartos + banheiros) / area
-        preco_por_m2_ref = float(self.reference_values.get('preco_por_m2_median', 5000.0))
+        Retorna (nome_canonico, coluna_ohe) ou (None, None) se o bairro não
+        existir no conjunto de treino.
+        """
+        alvo = self._normalize_bairro(bairro_raw)
+        if not alvo:
+            return None, None
+        for col in self.feature_columns:
+            if col.startswith("Bairro_") and self._normalize_bairro(col[len("Bairro_"):]) == alvo:
+                return col[len("Bairro_"):], col
+        return None, None
 
-        def encode_value(encoder_key: str, raw_value: str) -> int:
-            encoder = label_encoders.get(encoder_key)
-            if encoder is None:
-                return 0
-            try:
-                return int(encoder.transform([raw_value])[0])
-            except Exception:
-                return 0
+    def _predict_standard(self, features_dict: dict) -> dict:
+        """Predição para modelos padrão (GradientBoostingRegressor, etc.).
 
-        tipo_encoded = encode_value('tipo', tipo_val)
-        bairro_encoded = encode_value('bairro', bairro_val)
-        cidade_encoded = encode_value('cidade', cidade_val)
+        Monta o vetor na ordem exata de `feature_columns`, com esta precedência
+        por coluna: entrada do usuário > one-hot do bairro > perfil mediano do
+        bairro > mediana global do treino. O preenchimento por mediana é o que
+        impede que colunas não informadas virem 0.0 e achatem a predição.
+        """
+        scaler = self.preprocessor["scaler"]
+        defaults: dict[str, float] = self.preprocessor.get("feature_defaults", {}) or {}
+        profiles: dict[str, dict[str, float]] = self.preprocessor.get("bairro_profiles", {}) or {}
 
-        feature_map = {
-            'area': area,
-            'quartos': quartos,
-            'banheiros': banheiros,
-            'densidade_comodos': densidade_comodos,
-            'preco_por_m2': preco_por_m2_ref,
-            'tipo_encoded': tipo_encoded,
-            'bairro_encoded': bairro_encoded,
-            'cidade_encoded': cidade_encoded
+        area = max(float(features_dict["area"]), 1.0)
+        quartos = int(features_dict["quartos"])
+        banheiros = int(features_dict["banheiros"])
+        tipo_val = str(features_dict.get("tipo", "")).lower().strip()
+        bairro_val = str(features_dict.get("bairro", "")).strip()
+
+        bairro_nome, bairro_col = self._resolve_bairro(bairro_val)
+        perfil = profiles.get(bairro_nome, {}) if bairro_nome else {}
+
+        informado = {
+            "Area_m2": area,
+            "Quartos": float(quartos),
+            "Banheiros": float(banheiros),
+            "densidade_comodos": (quartos + banheiros) / area,
         }
 
-        ordered_columns = self.feature_columns or [
-            'area',
-            'quartos',
-            'banheiros',
-            'densidade_comodos',
-            'tipo_encoded',
-            'bairro_encoded',
-            'cidade_encoded'
-        ]
+        vetor = []
+        for col in self.feature_columns:
+            if col in informado:
+                vetor.append(float(informado[col]))
+            elif col.startswith("Bairro_"):
+                vetor.append(1.0 if col == bairro_col else 0.0)
+            elif col in perfil:
+                vetor.append(float(perfil[col]))
+            else:
+                vetor.append(float(defaults.get(col, 0.0)))
 
-        feature_vector = [feature_map.get(col, 0.0) for col in ordered_columns]
-        features = np.array([feature_vector])
-        if features.size == 0:
+        if not vetor:
             raise ValueError("Nenhuma feature disponível para predição.")
 
-        features_scaled = scaler.transform(features)
-        prediction = self.model.predict(features_scaled)[0]
+        features_scaled = scaler.transform(np.array([vetor]))
+        prediction = float(self.model.predict(features_scaled)[0])
 
-        confianca = "alta"
-        if (tipo_encoded == 0 and tipo_val not in ['apartamento', 'casa']) or \
-           bairro_encoded == 0 or cidade_encoded == 0:
-            confianca = "média"
+        return {
+            "preco_estimado": prediction,
+            "confianca": self._nivel_confianca(bairro_nome, bool(perfil), tipo_val, area),
+        }
 
-        return {"preco_estimado": float(prediction), "confianca": confianca}
-
-
+    @staticmethod
+    def _nivel_confianca(bairro_nome, tem_perfil: bool, tipo_val: str, area: float) -> str:
+        """Confiança pelo quanto da entrada o modelo realmente viu no treino."""
+        if bairro_nome is None:
+            return "baixa"
+        if not tem_perfil or tipo_val not in ("apartamento", "casa"):
+            return "média"
+        if area < 20 or area > 1000:
+            return "média"
+        return "alta"

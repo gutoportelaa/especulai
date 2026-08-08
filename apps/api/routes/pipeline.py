@@ -9,18 +9,21 @@ Endpoints:
   GET  /api/v1/pipeline/info         - Info sobre modelo treinado
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-from datetime import datetime
 import json
-import asyncio
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-DATA_ROOT = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import ARTIFACT_DIR as _ARTIFACT_DIR
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_ROOT = _DATA_ROOT
 STATUS_FILE = DATA_ROOT / "pipeline_status.json"
 LOG_FILE = DATA_ROOT / "pipeline_orchestrator.log"
 ORCHESTRATOR_LOG_FILE = DATA_ROOT / "pipeline_log.txt"
@@ -41,26 +44,26 @@ class PipelineStatusResponse(BaseModel):
     """Resposta de status do pipeline."""
     status: str
     current_stage: str
-    completed_stages: List[str]
-    errors: List[str]
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    completed_stages: list[str]
+    errors: list[str]
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class PipelineInfoResponse(BaseModel):
     """Informações sobre o modelo treinado."""
     model_exists: bool
-    model_path: Optional[str] = None
-    trained_at: Optional[str] = None
-    features_count: Optional[int] = None
-    dataset_size: Optional[int] = None
+    model_path: str | None = None
+    trained_at: str | None = None
+    features_count: int | None = None
+    dataset_size: int | None = None
 
 
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
-def _get_pipeline_status() -> Dict[str, Any]:
+def _get_pipeline_status() -> dict[str, Any]:
     """Lê status do pipeline do arquivo."""
     if STATUS_FILE.exists():
         try:
@@ -87,7 +90,7 @@ async def _run_pipeline_background(
 ):
     """Executa pipeline em background."""
     try:
-        from especulai.ml.pipeline.orchestrator import PipelineOrchestrator
+        from ml.pipeline.orchestrator import PipelineOrchestrator
         
         orchestrator = PipelineOrchestrator()
         orchestrator.run(
@@ -110,7 +113,7 @@ async def _run_pipeline_background(
 async def run_pipeline(
     request: PipelineRunRequest,
     background_tasks: BackgroundTasks
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Inicia execução do pipeline em background.
     
@@ -183,7 +186,7 @@ async def pipeline_status() -> PipelineStatusResponse:
 
 
 @router.get("/logs")
-async def pipeline_logs(lines: int = 100) -> Dict[str, List[str]]:
+async def pipeline_logs(lines: int = 100) -> dict[str, Any]:
     """
     Retorna últimas linhas de log do pipeline.
     
@@ -217,7 +220,7 @@ async def pipeline_logs(lines: int = 100) -> Dict[str, List[str]]:
 
 
 @router.post("/reset")
-async def reset_pipeline() -> Dict[str, str]:
+async def reset_pipeline() -> dict[str, str]:
     """
     Reseta pipeline para começar do zero.
     
@@ -227,7 +230,7 @@ async def reset_pipeline() -> Dict[str, str]:
         Confirmação de reset
     """
     try:
-        from especulai.ml.pipeline.orchestrator import PipelineOrchestrator
+        from ml.pipeline.orchestrator import PipelineOrchestrator
         
         orchestrator = PipelineOrchestrator()
         orchestrator.reset()
@@ -252,8 +255,7 @@ async def pipeline_info() -> PipelineInfoResponse:
     Returns:
         Metadados do modelo (se existir)
     """
-    artifact_dir = Path(__file__).resolve().parents[2] / "artifacts"
-    model_path = artifact_dir / "modelo_definitivo.joblib"
+    model_path = _ARTIFACT_DIR / "modelo_definitivo.joblib"
     
     if not model_path.exists():
         return PipelineInfoResponse(
@@ -285,7 +287,7 @@ async def pipeline_info() -> PipelineInfoResponse:
 
 
 @router.get("/stages")
-async def pipeline_stages() -> Dict[str, List[str]]:
+async def pipeline_stages() -> dict[str, Any]:
     """
     Retorna lista de estágios do pipeline.
     

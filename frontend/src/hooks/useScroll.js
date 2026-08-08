@@ -1,21 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from "react";
 
 export function useScroll() {
-  const [isScrolled, setIsScrolled] = useState(false)
+	const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true)
-      } else {
-        setIsScrolled(false)
-      }
-    }
+	useEffect(() => {
+		const handleScroll = () => {
+			if (window.scrollY > 10) {
+				setIsScrolled(true);
+			} else {
+				setIsScrolled(false);
+			}
+		};
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+		window.addEventListener("scroll", handleScroll);
+		return () => window.removeEventListener("scroll", handleScroll);
+	}, []);
 
-  return isScrolled
+	return isScrolled;
 }
-

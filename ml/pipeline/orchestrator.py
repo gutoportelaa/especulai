@@ -16,17 +16,18 @@ Responsabilidades:
   - Tratamento de erros com recuperação
 """
 
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, Optional
 import json
-import sys
 import logging
+import sys
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # .../especulai
 WORKSPACE_ROOT = PROJECT_ROOT.parent
-DATA_ROOT = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_ROOT = _DATA_ROOT
 STATUS_FILE = DATA_ROOT / "pipeline_status.json"
 LOG_FILE = DATA_ROOT / "pipeline_orchestrator.log"
 
@@ -334,7 +335,7 @@ class PipelineOrchestrator:
     
     def _stage_scraping_olx(self, num_pages_venda: int, num_pages_aluguel: int, clear_previous: bool):
         """Stage 1: Scraping OLX."""
-        from especulai.apps.scraper.scraper_olx import main as scrape_olx_main
+        from apps.scraper.scraper_olx import main as scrape_olx_main
         
         scrape_olx_main(
             num_pages_venda=num_pages_venda,
@@ -344,7 +345,7 @@ class PipelineOrchestrator:
     
     def _stage_enriquecimento_geo(self):
         """Stage 2: Enriquecimento Geoespacial."""
-        from especulai.ml.pipeline.modules.enriquecimento_geoespacial import main as enrich_geo_main
+        from ml.pipeline.modules.enriquecimento_geoespacial import main as enrich_geo_main
         
         # Entrada: raw_olx.csv
         # Saída: enriched_geo_olx.csv
@@ -352,7 +353,7 @@ class PipelineOrchestrator:
     
     def _stage_enriquecimento_economico(self):
         """Stage 3: Enriquecimento Econômico."""
-        from especulai.ml.pipeline.modules.enriquecimento_economico import main as enrich_eco_main
+        from ml.pipeline.modules.enriquecimento_economico import main as enrich_eco_main
         
         # Entrada: enriched_geo_olx.csv
         # Saída: enriched_economic_olx.csv
@@ -360,7 +361,7 @@ class PipelineOrchestrator:
     
     def _stage_preparacao_dataset(self):
         """Stage 4: Preparação de Dataset."""
-        from especulai.ml.pipeline.prepare_dataset import main as prepare_main
+        from ml.pipeline.prepare_dataset import main as prepare_main
 
         # Entrada: enriched_economic_olx.csv
         # Saída: dataset_treino_olx_final.csv
@@ -368,7 +369,7 @@ class PipelineOrchestrator:
     
     def _stage_treinamento_modelo(self):
         """Stage 5: Treinamento do Modelo."""
-        from especulai.ml.pipeline.train_model import main as train_model_main
+        from ml.pipeline.train_model import main as train_model_main
         
         train_model_main()
     

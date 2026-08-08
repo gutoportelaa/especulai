@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import geopandas as gpd
 import pandas as pd
@@ -150,7 +149,7 @@ def enrich_with_ibge(
     df: pd.DataFrame,
     lat_col: str = "Latitude",
     lon_col: str = "Longitude",
-    setores: Optional[gpd.GeoDataFrame] = None,
+    setores: gpd.GeoDataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Anexa features socioeconômicas por setor censitário via point-in-polygon.

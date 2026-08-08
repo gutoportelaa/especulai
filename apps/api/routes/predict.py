@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from especulai.apps.api.models.schemas import ImovelInput, PredictionOutput
-from especulai.apps.api.services.model_service import ModelService
 
+from apps.api.models.schemas import ImovelInput, PredictionOutput
+from apps.api.services.model_service import ModelService
 
 router = APIRouter()
 model_service = ModelService()

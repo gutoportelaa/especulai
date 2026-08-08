@@ -16,18 +16,17 @@ Não faz: Limpeza, enriquecimento, filtragem de fontes (feito no prepare_dataset
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, Tuple
-from datetime import datetime
 import logging
+import math
 import os
+from datetime import datetime
+from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import math
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -35,7 +34,9 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
 ARTIFACT_DIR = Path(__file__).resolve().parents[1] / "artifacts"
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
-DATA_ROOT = WORKSPACE_ROOT / "dados_imoveis_teresina"
+from config.paths import DATA_ROOT as _DATA_ROOT
+
+DATA_ROOT = _DATA_ROOT
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
 # Dataset preparado (entrada)
@@ -53,6 +54,14 @@ PREPROCESSOR_PATH = ARTIFACT_DIR / "preprocessador.joblib"
 TRAIN_LOG_FILE = DATA_ROOT / "train_model_log.txt"
 
 TARGET_COLUMN = "Valor_Anuncio"
+
+# Features derivadas do próprio alvo — treinar com elas produz R² irreal.
+# FipeZap_Diferenca_m2 == Valor_Anuncio / Area_m2 - FipeZap_m2 (identidade exata),
+# ou seja, o modelo apenas inverteria a álgebra em vez de aprender o preço.
+LEAKAGE_COLUMNS = ("FipeZap_Diferenca_m2",)
+
+# Abaixo disso a mediana do bairro é ruído; cai-se no padrão global.
+MIN_AMOSTRAS_PERFIL_BAIRRO = 3
 
 # ============================================================================
 # LOGGING
@@ -123,7 +132,7 @@ def load_and_validate_dataset(csv_path: Path) -> pd.DataFrame:
 # CONSTRUÇÃO DE FEATURES
 # ============================================================================
 
-def build_feature_matrix(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, StandardScaler, Dict]:
+def build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, StandardScaler, dict]:
     """
     Constrói matriz de features a partir do dataset já preparado.
     
@@ -139,11 +148,17 @@ def build_feature_matrix(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, Stan
         Tupla (X_scaled, y, scaler, metadata)
     """
     logger.info("[FEAT] Construindo matriz de features...")
-    
-    # Seleciona apenas colunas numéricas (exclui alvo)
-    X = df.drop(columns=[TARGET_COLUMN]).select_dtypes(include=[np.number])
+
+    dropped = [TARGET_COLUMN, *(c for c in LEAKAGE_COLUMNS if c in df.columns)]
+
+    # bool entra junto: as colunas one-hot de Bairro são booleanas e
+    # select_dtypes(np.number) sozinho as descartaria silenciosamente.
+    X = df.drop(columns=dropped).select_dtypes(include=[np.number, "bool"]).astype(float)
     y = df[TARGET_COLUMN].values
-    
+
+    leaked = [c for c in LEAKAGE_COLUMNS if c in df.columns]
+    if leaked:
+        logger.info(f"[FEAT] Features removidas por vazamento de alvo: {leaked}")
     logger.info(f"[FEAT] Features selecionadas: {X.shape[1]}")
     logger.info(f"[FEAT] Target shape: {y.shape}")
     
@@ -162,8 +177,41 @@ def build_feature_matrix(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, Stan
         }
     }
     
+    metadata["feature_defaults"] = build_feature_defaults(X)
+    metadata["bairro_profiles"] = build_bairro_profiles(X)
+
     logger.info("[FEAT] ✓ Matriz de features construída com sucesso")
     return X_scaled, y, scaler, metadata
+
+
+def build_feature_defaults(X: pd.DataFrame) -> dict[str, float]:
+    """Mediana de cada feature, usada em inferência para colunas que o usuário não informa.
+
+    Sem isso o serviço preencheria com 0.0, que após o StandardScaler vira um
+    outlier de vários desvios e achata a predição num valor constante.
+    """
+    return {col: float(X[col].median()) for col in X.columns}
+
+
+def build_bairro_profiles(X: pd.DataFrame) -> dict[str, dict[str, float]]:
+    """Perfil contextual mediano por bairro (coordenadas, distâncias a POIs, FipeZap).
+
+    O usuário informa apenas o nome do bairro; essas features derivadas são
+    reconstruídas a partir dos imóveis daquele bairro no conjunto de treino.
+    """
+    bairro_cols = [c for c in X.columns if c.startswith("Bairro_")]
+    contextual = [c for c in X.columns if not c.startswith("Bairro_")]
+
+    profiles: dict[str, dict[str, float]] = {}
+    for col in bairro_cols:
+        mask = X[col] > 0.5
+        if mask.sum() < MIN_AMOSTRAS_PERFIL_BAIRRO:
+            continue
+        subset = X.loc[mask, contextual]
+        profiles[col[len("Bairro_") :]] = {c: float(subset[c].median()) for c in contextual}
+
+    logger.info(f"[FEAT] Perfis de bairro construídos: {len(profiles)}/{len(bairro_cols)}")
+    return profiles
 
 
 # ============================================================================
@@ -213,7 +261,7 @@ def evaluate_model(
     model: GradientBoostingRegressor,
     X_train: np.ndarray, X_test: np.ndarray,
     y_train: np.ndarray, y_test: np.ndarray
-) -> Dict:
+) -> dict:
     """
     Avalia modelo em treino e teste.
     
@@ -266,7 +314,7 @@ def evaluate_model(
     return metrics
 
 
-def save_artifacts(model: GradientBoostingRegressor, scaler: StandardScaler, metadata: Dict):
+def save_artifacts(model: GradientBoostingRegressor, scaler: StandardScaler, metadata: dict):
     """
     Salva modelo e pré-processador em disco.
     
@@ -324,8 +372,8 @@ def save_artifacts(model: GradientBoostingRegressor, scaler: StandardScaler, met
     # Cria label encoders se houver classes detectadas
     label_encoders = {}
     try:
-        from sklearn.preprocessing import LabelEncoder
         import numpy as np
+        from sklearn.preprocessing import LabelEncoder
 
         if tipo_classes:
             le_tipo = LabelEncoder()
@@ -349,7 +397,9 @@ def save_artifacts(model: GradientBoostingRegressor, scaler: StandardScaler, met
         "feature_columns": feature_cols,
         "target_column": metadata.get("target_column"),
         "label_encoders": label_encoders,
-        "reference_values": metadata.get("reference_values", {})
+        "reference_values": metadata.get("reference_values", {}),
+        "feature_defaults": metadata.get("feature_defaults", {}),
+        "bairro_profiles": metadata.get("bairro_profiles", {}),
     }
     
     # Artefato completo (modelo + preprocessador + metadata)
@@ -366,7 +416,7 @@ def save_artifacts(model: GradientBoostingRegressor, scaler: StandardScaler, met
     logger.info(f"[SAVE] ✓ Modelo salvo: {MODEL_PATH}")
     logger.info(f"[SAVE] ✓ Pré-processador salvo: {PREPROCESSOR_PATH}")
     
-    print(f"\n💾 Artefatos salvos:")
+    print("\n💾 Artefatos salvos:")
     print(f"   Modelo: {MODEL_PATH}")
     print(f"   Preprocessador: {PREPROCESSOR_PATH}")
 
@@ -407,7 +457,8 @@ def main():
         
         # 5. Avaliar
         metrics = evaluate_model(model, X_train, X_test, y_train, y_test)
-        
+        metadata["metrics"] = metrics
+
         # 6. Salvar artefatos
         save_artifacts(model, scaler, metadata)
         
@@ -420,10 +471,6 @@ def main():
     except Exception as e:
         logger.error(f"[ERROR] Erro durante treinamento: {e}")
         raise
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
