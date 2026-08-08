@@ -29,7 +29,9 @@ import logging
 import random
 import re
 import time
+import unicodedata
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import requests
@@ -66,6 +68,27 @@ HEADERS = {
 REQUEST_TIMEOUT = 20
 DELAY_PAGES = (2.0, 4.0)      # entre páginas de busca / detalhes
 NOMINATIM_DELAY = 1.1        # política de uso do Nominatim: 1 req/s
+PHOTON_DELAY = 1.0
+
+GEOCODER_UA = {"User-Agent": "especulai/0.2 (https://github.com/gutoportelaa/especulai)"}
+
+# Caixa de Teresina. Coordenada fora disso é resposta errada do geocodificador,
+# não um imóvel distante — Nominatim às vezes devolve outra cidade homônima.
+TERESINA_BBOX = (-5.30, -42.95, -4.90, -42.60)  # lat_min, lon_min, lat_max, lon_max
+
+# O anúncio abrevia o logradouro de forma inconsistente ("R.", "Av.", "Des.").
+# Sem expandir, o geocodificador não casa o nome da rua.
+ABREVIACOES = {
+    r"\bR\.": "Rua", r"\bAv\.": "Avenida", r"\bAvn\.": "Avenida", r"\bTv\.": "Travessa",
+    r"\bPç\.": "Praça", r"\bPc\.": "Praça", r"\bDes\.": "Desembargador",
+    r"\bDr\.": "Doutor", r"\bDra\.": "Doutora", r"\bProfa\.": "Professora",
+    r"\bProf\.": "Professor", r"\bSta\.": "Santa", r"\bSto\.": "Santo",
+    r"\bMons\.": "Monsenhor", r"\bCel\.": "Coronel", r"\bGen\.": "General",
+    r"\bPe\.": "Padre", r"\bSen\.": "Senador", r"\bPres\.": "Presidente",
+}
+
+# Similaridade mínima entre a rua pedida e a rua devolvida para aceitar o ponto.
+SIMILARIDADE_MINIMA_RUA = 0.75
 
 OUTPUT_HEADERS = [
     "ID_Imovel", "Tipo_Negocio", "Tipo_Imovel", "Area_m2", "Quartos",
@@ -298,43 +321,143 @@ def _save_geocode_cache(cache: dict[str, tuple[float, float, str]]) -> None:
             writer.writerow([addr, lat, lon, prec])
 
 
-def _nominatim(address: str) -> tuple[float, float] | None:
-    """Geocodifica via Nominatim (respeita política de uso)."""
+def split_endereco(endereco: str) -> tuple[str, str, str]:
+    """Quebra 'Rua X, 123, BAIRRO, TERESINA/PI' em (rua, numero, bairro), normalizado.
+
+    A normalização é o que faz o geocodificador acertar: o anúncio escreve
+    "R. Des. João Pereira" e o número como "3.353", e nenhum dos dois casa
+    com o cadastro do OSM sem tratamento.
+    """
+    partes = [p.strip() for p in endereco.split(",")]
+    rua = partes[0] if partes else ""
+    numero = partes[1] if len(partes) > 1 else ""
+    bairro = partes[2] if len(partes) > 2 else ""
+
+    for padrao, expansao in ABREVIACOES.items():
+        rua = re.sub(padrao, expansao, rua, flags=re.IGNORECASE)
+
+    rua = re.sub(r"\s+", " ", rua).strip().title()
+    numero = re.sub(r"[^\d]", "", numero)  # "3.353" -> "3353"
+    return rua, numero, bairro.strip().title()
+
+
+def _sem_acento(texto: str) -> str:
+    base = unicodedata.normalize("NFKD", str(texto))
+    return "".join(c for c in base if not unicodedata.combining(c)).lower().strip()
+
+
+def _dentro_de_teresina(lat: float, lon: float) -> bool:
+    lat_min, lon_min, lat_max, lon_max = TERESINA_BBOX
+    return lat_min <= lat <= lat_max and lon_min <= lon <= lon_max
+
+
+def _rua_confere(rua_pedida: str, rua_devolvida: str) -> bool:
+    """Evita aceitar um ponto que o geocodificador escolheu por aproximação ruim."""
+    if not rua_devolvida:
+        return False
+    similaridade = SequenceMatcher(
+        None, _sem_acento(rua_pedida), _sem_acento(rua_devolvida)
+    ).ratio()
+    return similaridade >= SIMILARIDADE_MINIMA_RUA
+
+
+def _nominatim(params: dict, rua_pedida: str) -> tuple[float, float, bool] | None:
+    """Consulta o Nominatim e devolve (lat, lon, rua_confere) ou None."""
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={"q": address, "format": "json", "limit": 1, "countrycodes": "br"},
-            headers={"User-Agent": "EspeculaiTeresina/1.0 (pesquisa academica)"},
+            params={**params, "format": "json", "limit": 1,
+                    "countrycodes": "br", "addressdetails": 1},
+            headers=GEOCODER_UA,
             timeout=REQUEST_TIMEOUT,
         )
         time.sleep(NOMINATIM_DELAY)
-        data = resp.json()
-        if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
+        dados = resp.json()
+        if not dados:
+            return None
+        lat, lon = float(dados[0]["lat"]), float(dados[0]["lon"])
+        if not _dentro_de_teresina(lat, lon):
+            return None
+        return lat, lon, _rua_confere(rua_pedida, dados[0].get("address", {}).get("road", ""))
     except (requests.RequestException, ValueError, KeyError) as exc:
-        logger.warning("[GEO] Nominatim falhou para '%s': %s", address, exc)
-    return None
+        logger.warning("[GEO] Nominatim falhou (%s): %s", params, exc)
+        time.sleep(NOMINATIM_DELAY)
+        return None
+
+
+def _photon(consulta: str, rua_pedida: str) -> tuple[float, float, bool] | None:
+    """Photon (Komoot): mesmo dado do OSM, casamento difuso melhor que o Nominatim."""
+    try:
+        resp = requests.get(
+            "https://photon.komoot.io/api",
+            # Sem `lang`: o Photon só aceita default/de/en/fr e devolve 400 com "pt".
+            params={"q": consulta, "limit": 1, "lat": CIDADE_CENTROID[0],
+                    "lon": CIDADE_CENTROID[1]},
+            headers=GEOCODER_UA,
+            timeout=REQUEST_TIMEOUT,
+        )
+        time.sleep(PHOTON_DELAY)
+        feicoes = resp.json().get("features", [])
+        if not feicoes:
+            return None
+        lon, lat = feicoes[0]["geometry"]["coordinates"]
+        if not _dentro_de_teresina(lat, lon):
+            return None
+        props = feicoes[0]["properties"]
+        rua = props.get("street") or props.get("name", "")
+        return lat, lon, _rua_confere(rua_pedida, rua)
+    except (requests.RequestException, ValueError, KeyError, IndexError) as exc:
+        logger.warning("[GEO] Photon falhou ('%s'): %s", consulta, exc)
+        time.sleep(PHOTON_DELAY)
+        return None
 
 
 def geocode_escada(
     endereco: str, bairro: str, cache: dict[str, tuple[float, float, str]]
 ) -> tuple[float | None, float | None, str]:
-    """Resolve lat/lon pela escada de precisão, com cache."""
+    """Resolve lat/lon descendo da maior para a menor precisão.
+
+    Níveis, do melhor para o pior:
+      `rua_numero` — endereço com número confirmado pelo geocodificador
+      `rua`        — logradouro localizado, número não confirmado
+      `bairro`     — centroide do bairro
+      `cidade`     — centroide de Teresina
+
+    `geo_precision` vira feature: o modelo pode aprender a desconfiar de
+    imóveis cuja posição é só o centroide do bairro.
+    """
     if endereco and endereco in cache:
         return cache[endereco]
 
-    # Nível 1: endereço completo
-    if endereco:
-        coord = _nominatim(endereco)
-        if coord:
-            result = (coord[0], coord[1], "rua")
-            cache[endereco] = result
-            return result
+    rua, numero, bairro_end = split_endereco(endereco) if endereco else ("", "", "")
+    bairro_busca = bairro_end or bairro
+
+    if rua:
+        estruturado = {"city": "Teresina", "state": "Piauí", "country": "Brasil"}
+
+        # Nível 1: rua + número, aceito só se o geocodificador confirmar a rua.
+        tentativas = [
+            (_nominatim, ({**estruturado, "street": f"{numero} {rua}".strip()}, rua)),
+            (_photon, (f"{rua} {numero}, {bairro_busca}, Teresina, Piauí", rua)),
+        ]
+        for fn, args in tentativas:
+            resultado = fn(*args)
+            if resultado and resultado[2]:
+                lat, lon, _ = resultado
+                cache[endereco] = (lat, lon, "rua_numero")
+                return lat, lon, "rua_numero"
+
+        # Nível 2: só o logradouro — perde o número, mantém a rua certa.
+        resultado = _nominatim({**estruturado, "street": rua}, rua)
+        if resultado and resultado[2]:
+            lat, lon, _ = resultado
+            cache[endereco] = (lat, lon, "rua")
+            return lat, lon, "rua"
 
     # Nível 3: centroide do bairro
-    key = re.sub(r"\s+", " ", bairro.strip().lower())
-    if key in BAIRRO_CENTROIDS:
-        lat, lon = BAIRRO_CENTROIDS[key]
+    chave = re.sub(r"\s+", " ", (bairro_busca or "").strip().lower())
+    if chave in BAIRRO_CENTROIDS:
+        lat, lon = BAIRRO_CENTROIDS[chave]
         return lat, lon, "bairro"
 
     # Nível 4: centroide da cidade
@@ -345,20 +468,34 @@ def geocode_escada(
 # MAIN
 # ============================================================================
 
+def _carregar_existentes() -> dict[str, dict]:
+    """Lê o CSV já coletado, indexado por URL, para permitir coleta incremental."""
+    if not RAW_FILE.exists():
+        return {}
+    with RAW_FILE.open(encoding="utf-8") as f:
+        return {r["URL_Anuncio"]: r for r in csv.DictReader(f) if r.get("URL_Anuncio")}
+
+
 def main(
-    max_pages_comprar: int = 1,
-    max_pages_alugar: int = 0,
+    max_pages_comprar: int = 40,
+    max_pages_alugar: int = 20,
     limit: int | None = None,
     geocode: bool = True,
+    incremental: bool = True,
 ) -> Path:
     """
     Executa a coleta ponta-a-ponta.
 
+    A busca paginada para sozinha quando uma página não traz imóvel novo, então
+    os limites de página são apenas um teto de segurança.
+
     Args:
-        max_pages_comprar: páginas da busca de compra a percorrer.
-        max_pages_alugar: páginas da busca de aluguel a percorrer.
+        max_pages_comprar: teto de páginas da busca de compra.
+        max_pages_alugar: teto de páginas da busca de aluguel.
         limit: limite total de imóveis (para validação rápida).
         geocode: se True, aplica a escada de geocodificação.
+        incremental: preserva imóveis já coletados e só busca os novos. Evita
+            refazer geocodificação, que é o passo lento (1 req/s no Nominatim).
 
     Returns:
         Caminho do CSV gerado.
@@ -371,6 +508,13 @@ def main(
         urls += harvest_listing_urls(session, "comprar", max_pages_comprar)
     if max_pages_alugar:
         urls += harvest_listing_urls(session, "alugar", max_pages_alugar)
+
+    existentes = _carregar_existentes() if incremental else {}
+    if existentes:
+        antes = len(urls)
+        urls = [u for u in urls if u not in existentes]
+        logger.info("[MAIN] %d já coletados, %d novos (de %d anunciados).",
+                    len(existentes), len(urls), antes)
 
     if limit:
         urls = urls[:limit]
@@ -402,18 +546,74 @@ def main(
         )
         _sleep(DELAY_PAGES)
 
+        # Persiste a cada 25 imóveis: a coleta é longa e uma queda de rede no
+        # meio não pode custar meia hora de geocodificação.
+        if geocode and i % 25 == 0:
+            _save_geocode_cache(cache)
+            _escrever_csv(existentes, rows)
+
     if geocode:
         _save_geocode_cache(cache)
+
+    total = _escrever_csv(existentes, rows)
+    logger.info("[MAIN] ✓ %d linhas em %s (%d novas nesta execução)",
+                total, RAW_FILE, len(rows))
+    _resumo_geo(existentes, rows)
+    return RAW_FILE
+
+
+def _escrever_csv(existentes: dict[str, dict], novos: list[dict]) -> int:
+    """Grava o CSV unindo o que já existia com o coletado agora."""
+    combinado = dict(existentes)
+    for row in novos:
+        combinado[row["URL_Anuncio"]] = row
 
     with RAW_FILE.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=OUTPUT_HEADERS)
         writer.writeheader()
-        for row in rows:
+        for row in combinado.values():
             writer.writerow({k: row.get(k, "") for k in OUTPUT_HEADERS})
+    return len(combinado)
 
-    logger.info("[MAIN] ✓ %d linhas escritas em %s", len(rows), RAW_FILE)
-    return RAW_FILE
+
+def _resumo_geo(existentes: dict[str, dict], novos: list[dict]) -> None:
+    """Loga a distribuição de precisão — é o indicador de saúde da coleta."""
+    combinado = dict(existentes)
+    for row in novos:
+        combinado[row["URL_Anuncio"]] = row
+
+    contagem: dict[str, int] = {}
+    for row in combinado.values():
+        chave = str(row.get("geo_precision") or "?")
+        contagem[chave] = contagem.get(chave, 0) + 1
+
+    total = sum(contagem.values()) or 1
+    logger.info("[GEO] Precisão da geocodificação:")
+    for nivel in ("rua_numero", "rua", "bairro", "cidade", "none", "?"):
+        if nivel in contagem:
+            logger.info("[GEO]   %-11s %4d (%.0f%%)", nivel, contagem[nivel],
+                        contagem[nivel] / total * 100)
+
+
+def _cli() -> None:
+    import argparse
+
+    p = argparse.ArgumentParser(description="Coletor Rocha & Rocha (Teresina)")
+    p.add_argument("--paginas-comprar", type=int, default=40, help="teto de páginas de compra")
+    p.add_argument("--paginas-alugar", type=int, default=20, help="teto de páginas de aluguel")
+    p.add_argument("--limit", type=int, default=None, help="máximo de imóveis (validação rápida)")
+    p.add_argument("--sem-geocode", action="store_true", help="pula a geocodificação")
+    p.add_argument("--recomecar", action="store_true", help="ignora o CSV existente e recoleta tudo")
+    a = p.parse_args()
+
+    main(
+        max_pages_comprar=a.paginas_comprar,
+        max_pages_alugar=a.paginas_alugar,
+        limit=a.limit,
+        geocode=not a.sem_geocode,
+        incremental=not a.recomecar,
+    )
 
 
 if __name__ == "__main__":
-    main(max_pages_comprar=1, max_pages_alugar=0, limit=8)
+    _cli()

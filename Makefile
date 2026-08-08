@@ -5,7 +5,7 @@
 
 .PHONY: help install venv dev start kill-port \
         web-install web-dev web-build web-check web-fix \
-        pipeline train scrape \
+        pipeline train scrape scrape-rocha scrape-rocha-teste \
         test coverage typecheck lint ci \
         docker docker-down clean
 
@@ -39,6 +39,7 @@ help:
 	@echo "    make pipeline       Executa pipeline completo (scrape → train)"
 	@echo "    make train          Treina modelo com dataset existente"
 	@echo "    make scrape         Scraping OLX (5 páginas venda)"
+	@echo "    make scrape-rocha   Coleta incremental Rocha & Rocha (com endereço)"
 	@echo ""
 	@echo "  QUALIDADE"
 	@echo "    make test           pytest (todos os testes)"
@@ -106,6 +107,15 @@ train:
 
 scrape:
 	uv run python -m apps.scraper.scraper_olx
+
+# Coleta incremental: pula imóveis já no CSV e reaproveita o cache de
+# geocodificação. Rodar de novo só busca o que entrou desde a última vez.
+scrape-rocha:
+	uv run python -m apps.scraper.scraper_rocha $(ARGS)
+
+# Amostra rápida para validar que o site não mudou.
+scrape-rocha-teste:
+	uv run python -m apps.scraper.scraper_rocha --paginas-comprar 1 --paginas-alugar 0 --limit 5
 
 prepare:
 	uv run python -m ml.pipeline.prepare_dataset
