@@ -435,12 +435,18 @@ def geocode_escada(
     if rua:
         estruturado = {"city": "Teresina", "state": "Piauí", "country": "Brasil"}
 
-        # Nível 1: rua + número, aceito só se o geocodificador confirmar a rua.
-        tentativas = [
+        # Ordem medida em 97 endereços reais (rua confirmada pelo geocodificador):
+        #   Photon só rua        88%      Nominatim estruturado só rua    76%
+        #   Photon rua+número    82%      Nominatim estruturado rua+nº    74%
+        #                                 Nominatim texto livre           65%
+        # O Photon casa nomes de logradouro muito melhor sobre a mesma base OSM,
+        # então vai primeiro em cada nível.
+
+        # Nível 1: rua + número.
+        for fn, args in (
+            (_photon, (f"{rua} {numero}, {bairro_busca}, Teresina, Piaui", rua)),
             (_nominatim, ({**estruturado, "street": f"{numero} {rua}".strip()}, rua)),
-            (_photon, (f"{rua} {numero}, {bairro_busca}, Teresina, Piauí", rua)),
-        ]
-        for fn, args in tentativas:
+        ):
             resultado = fn(*args)
             if resultado and resultado[2]:
                 lat, lon, _ = resultado
@@ -448,11 +454,15 @@ def geocode_escada(
                 return lat, lon, "rua_numero"
 
         # Nível 2: só o logradouro — perde o número, mantém a rua certa.
-        resultado = _nominatim({**estruturado, "street": rua}, rua)
-        if resultado and resultado[2]:
-            lat, lon, _ = resultado
-            cache[endereco] = (lat, lon, "rua")
-            return lat, lon, "rua"
+        for fn, args in (
+            (_photon, (f"{rua}, Teresina, Piaui", rua)),
+            (_nominatim, ({**estruturado, "street": rua}, rua)),
+        ):
+            resultado = fn(*args)
+            if resultado and resultado[2]:
+                lat, lon, _ = resultado
+                cache[endereco] = (lat, lon, "rua")
+                return lat, lon, "rua"
 
     # Nível 3: centroide do bairro
     chave = re.sub(r"\s+", " ", (bairro_busca or "").strip().lower())
