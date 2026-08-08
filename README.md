@@ -424,6 +424,7 @@ esperado por esforço:
 | [`CONTEXT.md`](CONTEXT.md) | Diagnóstico técnico e melhorias priorizadas |
 | [`CLAUDE.md`](CLAUDE.md) | Guia de engenharia: convenções, estrutura, tech debt |
 | [`docs/GUIA_TREINAMENTO.md`](docs/GUIA_TREINAMENTO.md) | Pipeline de ponta a ponta |
+| [`docs/investigacao-geografica.md`](docs/investigacao-geografica.md) | **Quanto a localização explica o preço** — coleta com endereço, POIs reais e o resultado |
 | [`docs/notas-de-pesquisa.md`](docs/notas-de-pesquisa.md) | Anotações brutas de pesquisa (scraping, geocodificação, IBGE) |
 | [`notebooks/`](notebooks/) | Comparação de modelos e avaliação de métricas |
 
