@@ -1,0 +1,17 @@
+# Sobe a API localmente na mesma imagem que vai para produção.
+# `make docker` / `make docker-down`.
+services:
+  api:
+    build: .
+    image: especulai-api:local
+    ports:
+      - "${API_PORT:-8010}:7860"
+    environment:
+      ENVIRONMENT: development
+      ALLOWED_ORIGINS: "http://localhost:5174,http://127.0.0.1:5174"
+      # Pipeline desligado mesmo em dev-container: o scraping precisa do disco
+      # do host e de IP residencial. Rode via `make pipeline` fora do container.
+      ENABLE_PIPELINE_API: "false"
+    volumes:
+      - ./ml/artifacts:/home/app/especulai/ml/artifacts:ro
+    restart: unless-stopped

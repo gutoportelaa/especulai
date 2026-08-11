@@ -62,10 +62,10 @@ venv:
 	uv venv
 
 install:
-	uv sync
+	uv sync --extra pipeline
 
 install-dev:
-	uv sync --extra dev
+	uv sync --extra pipeline --extra dev
 
 dev:
 	uv run uvicorn apps.api.main:app --reload --host 0.0.0.0 --port $(PORT)
@@ -154,10 +154,39 @@ ci: lint typecheck test
 # =============================================================================
 
 docker:
-	docker compose up -d
+	docker compose up -d --build
 
 docker-down:
 	docker compose down
+
+# =============================================================================
+# DEPLOY
+# =============================================================================
+
+HF_SPACE ?= gutoportelaa/especulai-api
+
+# Sobe a API para o Hugging Face Space. Inclui ml/artifacts (o .joblib servido,
+# que o .gitignore mantém fora do GitHub) e exclui dados, frontend e caches.
+deploy-api:
+	@test -f ml/artifacts/modelo_definitivo.joblib \
+		|| { echo "ERRO: ml/artifacts/modelo_definitivo.joblib ausente. Rode 'make train' ou restaure do dataset HF."; exit 1; }
+	hf upload $(HF_SPACE) . . --repo-type space \
+		--exclude "*.git/*" ".venv/*" "node_modules/*" "frontend/*" "data/*" \
+		          "notebooks/*" "reports/*" "**/__pycache__/*" "*.pyc" \
+		          ".ruff_cache/*" ".pytest_cache/*" "*.log" ".env*" \
+		--commit-message "deploy: $(shell git rev-parse --short HEAD)"
+	hf upload $(HF_SPACE) deploy/space-README.md README.md --repo-type space \
+		--commit-message "docs: card do Space"
+	@echo "Space: https://huggingface.co/spaces/$(HF_SPACE)"
+
+deploy-api-logs:
+	hf spaces logs $(HF_SPACE) --follow
+
+# Build do frontend apontando para a API publicada. Suba dist/ no Cloudflare
+# Pages / Netlify (o _redirects em public/ cuida do roteamento do SPA).
+deploy-web:
+	cd frontend && VITE_API_URL=$(API_URL) bun run build
+	@echo "Pronto: frontend/dist/ — publique este diretório."
 
 # =============================================================================
 # UTILITÁRIOS

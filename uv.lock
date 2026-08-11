@@ -377,26 +377,15 @@ name = "especulai"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "beautifulsoup4" },
     { name = "fastapi" },
-    { name = "geopandas" },
-    { name = "geopy" },
     { name = "joblib" },
-    { name = "lightgbm" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "overpy" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "python-dotenv" },
-    { name = "requests" },
     { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "scrapy" },
     { name = "uvicorn", extra = ["standard"] },
-    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "xgboost", version = "3.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 
 [package.optional-dependencies]
@@ -407,33 +396,46 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "ruff" },
 ]
+pipeline = [
+    { name = "beautifulsoup4" },
+    { name = "geopandas" },
+    { name = "geopy" },
+    { name = "lightgbm" },
+    { name = "overpy" },
+    { name = "requests" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "scrapy" },
+    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "xgboost", version = "3.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "basedpyright", marker = "extra == 'dev'", specifier = ">=1.14.0" },
-    { name = "beautifulsoup4", specifier = ">=4.12.0" },
+    { name = "beautifulsoup4", marker = "extra == 'pipeline'", specifier = ">=4.12.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "geopandas", specifier = ">=1.1.4" },
-    { name = "geopy", specifier = ">=2.4.0" },
+    { name = "geopandas", marker = "extra == 'pipeline'", specifier = ">=1.1.4" },
+    { name = "geopy", marker = "extra == 'pipeline'", specifier = ">=2.4.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
     { name = "joblib", specifier = ">=1.4.0" },
-    { name = "lightgbm", specifier = ">=4.3.0" },
+    { name = "lightgbm", marker = "extra == 'pipeline'", specifier = ">=4.3.0" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "overpy", specifier = ">=0.7" },
+    { name = "overpy", marker = "extra == 'pipeline'", specifier = ">=0.7" },
     { name = "pandas", specifier = ">=2.2.0" },
     { name = "pydantic", specifier = ">=2.7.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "requests", specifier = ">=2.32.0" },
+    { name = "requests", marker = "extra == 'pipeline'", specifier = ">=2.32.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
     { name = "scikit-learn", specifier = ">=1.5.0" },
-    { name = "scipy", specifier = ">=1.17.1" },
-    { name = "scrapy", specifier = ">=2.11.0" },
+    { name = "scipy", marker = "extra == 'pipeline'", specifier = ">=1.17.1" },
+    { name = "scrapy", marker = "extra == 'pipeline'", specifier = ">=2.11.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0" },
-    { name = "xgboost", specifier = ">=2.0.0" },
+    { name = "xgboost", marker = "extra == 'pipeline'", specifier = ">=2.0.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["pipeline", "dev"]
 
 [[package]]
 name = "fastapi"

@@ -3,19 +3,27 @@ name = "especulai"
 version = "0.1.0"
 description = "Plataforma de estimativa de preços de imóveis com Machine Learning"
 requires-python = ">=3.11"
+# Somente o necessário para SERVIR predições. Scraping e enriquecimento
+# geoespacial vivem no extra `pipeline` — geopandas + scrapy sozinhos dobram o
+# tamanho da imagem de deploy e nada disso roda em tempo de inferência.
 dependencies = [
     # API
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "pydantic>=2.7.0",
     "python-dotenv>=1.0.0",
-    # ML
+    # Inferência
     "scikit-learn>=1.5.0",
-    "lightgbm>=4.3.0",
-    "xgboost>=2.0.0",
     "pandas>=2.2.0",
     "numpy>=1.26.0",
     "joblib>=1.4.0",
+]
+
+[project.optional-dependencies]
+pipeline = [
+    # Modelos alternativos avaliados nos notebooks
+    "lightgbm>=4.3.0",
+    "xgboost>=2.0.0",
     # Scraping
     "requests>=2.32.0",
     "beautifulsoup4>=4.12.0",
@@ -26,8 +34,6 @@ dependencies = [
     "geopandas>=1.1.4",
     "scipy>=1.17.1",
 ]
-
-[project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

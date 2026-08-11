@@ -1,0 +1,3 @@
+# BrowserRouter serve /predict no cliente. Sem este rewrite, um acesso direto
+# ou um F5 em /predict bate no host estático e devolve 404.
+/*    /index.html   200

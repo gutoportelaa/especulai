@@ -1,0 +1,21 @@
+.git/
+.github/
+.venv/
+.ruff_cache/
+.pytest_cache/
+**/__pycache__/
+**/*.py[cod]
+
+frontend/
+notebooks/
+docs/
+reports/
+
+# O dataset de treino (4,9 MB) e os shapefiles do IBGE não servem à inferência.
+# ml/artifacts/ NÃO entra aqui: os .joblib são o modelo servido.
+data/
+
+*.log
+*.xlsx
+.env
+.env.local

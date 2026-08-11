@@ -4,13 +4,14 @@ Ponto de entrada da API FastAPI modularizada.
 
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.routes.health import router as health_router
 from apps.api.routes.pipeline import router as pipeline_router
 from apps.api.routes.predict import router as predict_router
 from apps.api.routes.scrape import router as scrape_router
+from apps.api.security import pipeline_api_enabled, require_admin_token
 
 app = FastAPI(
     title="Especulai API",
@@ -37,12 +38,17 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(predict_router)
-app.include_router(scrape_router)
-app.include_router(pipeline_router)
+
+# Scraping e pipeline escrevem no disco e consomem CPU por minutos. Fora de
+# desenvolvimento ficam desmontados por padrão (404) e, quando habilitados,
+# atrás de token.
+if pipeline_api_enabled():
+    admin_only = [Depends(require_admin_token)]
+    app.include_router(scrape_router, dependencies=admin_only)
+    app.include_router(pipeline_router, dependencies=admin_only)
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
-
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("API_PORT", "8000")))
