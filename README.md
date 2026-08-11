@@ -5,8 +5,12 @@
 <h1 align="center">Especulai</h1>
 
 <p align="center">
-  <strong>Estimativa de preços de imóveis em Teresina (PI) com Machine Learning.</strong><br>
-  Do scraping ao modelo em produção, servido por uma API REST e uma interface React.
+  <strong>Estimativa de preços de <em>venda</em> de imóveis em Teresina (PI) com Machine Learning.</strong><br>
+  Do scraping ao modelo em produção — que roda no seu navegador, sem servidor.
+</p>
+
+<p align="center">
+  <a href="https://gutoportelaa.github.io/especulai/"><strong>▶ Ver no ar</strong></a>
 </p>
 
 <p align="center">
@@ -16,6 +20,7 @@
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white">
+  <img alt="GitHub Pages" src="https://img.shields.io/badge/deploy-GitHub%20Pages-222?logo=githubpages&logoColor=white">
 </p>
 
 ---
@@ -30,7 +35,10 @@ um modelo de regressão que devolve uma estimativa em segundos, junto com um ní
 que diz o quanto o modelo realmente conhece aquele tipo de imóvel naquele bairro.
 
 **Entrada:** área, quartos, banheiros, tipo, bairro, cidade
-**Saída:** preço estimado (R$) + confiança (alta / média / baixa)
+**Saída:** preço de **venda** estimado (R$) + confiança (alta / média / baixa)
+
+> O modelo estima **apenas venda**. Aluguel é coletado pelos scrapers e descartado no
+> preparo do dataset — ver [Limitações](#limitações-conhecidas).
 
 ---
 
@@ -51,9 +59,18 @@ que diz o quanto o modelo realmente conhece aquele tipo de imóvel naquele bairr
 </tr>
 </table>
 
-### Via API
+O site em <https://gutoportelaa.github.io/especulai/> é **estático**: o modelo é baixado
+uma vez (86 KB comprimidos) e a predição acontece no navegador, em ~75 ms. Não há
+servidor, não há cold start e não há custo de operação.
+
+### Via API local
+
+A API FastAPI continua no repositório e é o caminho usado pelo pipeline e pelos testes —
+ela só não é mais o que serve o site publicado.
 
 ```bash
+make dev  # http://localhost:8000
+
 curl -X POST http://localhost:8000/predict \
   -H 'Content-Type: application/json' \
   -d '{"area":85,"quartos":3,"banheiros":2,"tipo":"apartamento","bairro":"Jóquei","cidade":"Teresina"}'
@@ -211,21 +228,27 @@ flowchart LR
         G[(artefato .joblib<br/>modelo + scaler + perfis)]
     end
     subgraph Serviço
-        H[FastAPI<br/>POST /predict]
-        I[React + Vite]
+        H[export_web.py<br/>200 árvores → JSON]
+        I[React + Vite<br/>inferência no navegador]
+        J[FastAPI<br/>POST /predict · local]
     end
     A --> B
     A2 --> B
-    B --> C --> D --> E --> F --> G --> H --> I
+    B --> C --> D --> E --> F --> G
+    G --> H --> I
+    G --> J
 ```
+
+O site publicado segue o caminho `G → H → I`: o modelo é exportado para JSON e avaliado no
+cliente. O ramo `G → J` é a API local, usada pelo pipeline e pelos testes.
 
 Os cinco estágios são coordenados por `PipelineOrchestrator`, que persiste progresso em
 `data/pipeline_status.json` e pula estágios já concluídos — reexecutar o pipeline é idempotente.
 
 ### Como o serviço monta as features
 
-O usuário informa seis campos, mas o modelo espera 123. A diferença é preenchida por
-precedência, no `ModelService`:
+O usuário informa seis campos, mas o modelo espera 121. A diferença é preenchida por
+precedência — no `ModelService` (Python) e, de forma idêntica, no `features.js` (navegador):
 
 1. **Entrada do usuário** — área, quartos, banheiros
 2. **One-hot do bairro** — casado por normalização (sem acento, sem caixa)
@@ -239,6 +262,13 @@ insensível à entrada. Era exatamente o que acontecia antes desta correção.
 
 O nível de confiança sai daí: bairro desconhecido → `baixa`; bairro conhecido mas sem perfil,
 tipo atípico ou área fora de 20–1000 m² → `média`; caso contrário → `alta`.
+
+As duas implementações precisam concordar até o centavo, e isso é verificado por teste:
+`tests/test_web_export_parity.py` confere as árvores exportadas contra o sklearn em 8 casos
+fixos e 300 aleatórios; `model.test.js` confere o preço final contra fixtures geradas pelo
+pytest. Duas armadilhas custaram caro e estão documentadas no `CLAUDE.md`: arredondar
+thresholds errava o preço em até 1,3%, e as árvores do sklearn comparam `X` já convertido
+para float32 — o JS precisa de `Math.fround`.
 
 ---
 
@@ -265,6 +295,20 @@ make web-dev        # interface em http://localhost:5173
 O repositório inclui `data/dataset_treino_olx_final.csv` (5.644 anúncios já enriquecidos), então
 `make train` funciona logo após o clone — sem precisar rodar o scraping antes.
 
+### Publicando o site
+
+`frontend/public/model/especulai.json` é versionado, então o frontend funciona logo após o
+clone, sem treinar nada. Depois de um `make train`, regenere e **commite** o JSON — senão o
+site continua servindo o modelo antigo:
+
+```bash
+make export-web     # exporta as 200 árvores para frontend/public/model/
+make deploy-web     # build estático em frontend/dist/
+```
+
+O deploy é automático: qualquer push em `main` que toque `frontend/**` dispara
+`.github/workflows/deploy-web.yml`.
+
 ### Rodando em portas alternativas
 
 ```bash
@@ -273,17 +317,30 @@ ALLOWED_ORIGINS="http://localhost:5174" make dev PORT=8010   # CORS para outra o
 cd frontend && bunx vite --port 5174                  # frontend
 ```
 
-O frontend lê a URL da API de `VITE_API_URL` (`frontend/.env.local`):
+O frontend **não** consome a API — o modelo roda no navegador. A variável que importa é
+`VITE_BASE`, o subcaminho onde o site será servido (`/especulai/` no GitHub Pages, `/` em
+domínio próprio):
 
-```
-VITE_API_URL=http://localhost:8010
+```bash
+make deploy-web WEB_BASE=/
 ```
 
 ---
 
 ## API
 
-Documentação interativa em `http://localhost:8000/docs`.
+A API é **local**: o site publicado não a utiliza. Documentação interativa em
+`http://localhost:8000/docs`.
+
+Os endpoints de pipeline e scraping disparam scraping e retreino, então ficam
+**desmontados fora de desenvolvimento** (respondem `404`). Para habilitá-los:
+
+```bash
+ENABLE_PIPELINE_API=true PIPELINE_API_TOKEN=<segredo> make start
+curl -H 'Authorization: Bearer <segredo>' -X POST localhost:8000/api/v1/pipeline/reset
+```
+
+Habilitar sem definir o token em produção devolve `403`, não acesso aberto.
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -365,11 +422,13 @@ especulai/
 
 | Camada | Tecnologia |
 |---|---|
-| API | FastAPI · Uvicorn · Pydantic v2 |
+| Serviço | Site estático (GitHub Pages) · inferência no navegador, sem runtime de ML |
+| API (local) | FastAPI · Uvicorn · Pydantic v2 |
 | ML | scikit-learn (GradientBoostingRegressor) · pandas · NumPy · joblib |
 | Coleta | requests · BeautifulSoup4 |
 | Geo | geopy (Nominatim) · malha de setores censitários IBGE 2022 |
 | Frontend | React 19 · Vite 5 · Tailwind 3 · framer-motion · lucide-react |
+| Testes | pytest · bun:test (paridade Python↔JS) |
 | Tooling | uv · bun · Ruff · basedpyright · Biome |
 
 ---
@@ -380,7 +439,18 @@ Este é um projeto em evolução, e vale ser explícito sobre onde ele está:
 
 - **Preço de anúncio ≠ preço de venda.** O modelo aprende a pedida do vendedor. O desconto real
   de negociação não está nos dados.
-- **Sem testes automatizados.** `make test` existe, o diretório `tests/` ainda não.
+- **Só venda.** Não há modelo de aluguel. Os scrapers coletam aluguel (467 dos 1.164 anúncios
+  do Rocha & Rocha), mas o preparo do dataset descarta tudo que não é venda. Até 11/08/2026 a
+  separação era feita só por um piso de R$ 50 mil no treino — heurística que deixava passar
+  4 de 467 aluguéis e descartava 7 de 696 vendas. O filtro explícito por `Tipo_Negocio` já está
+  no `prepare_dataset.py`, mas **o modelo publicado ainda é o anterior**: só vale no próximo
+  retreino.
+- **O campo `tipo` não afeta o preço.** Não existe nenhuma coluna `Tipo_Imovel_*` entre as 121
+  features do modelo. O formulário coleta apartamento/casa, e isso só influencia o rótulo de
+  confiança. Mesma origem: as features de engenharia (`Densidade_Comodos`, `Total_Dependencias`)
+  também não chegaram ao dataset versionado.
+- **Cobertura de testes ainda parcial.** A paridade Python↔JS do modelo web está coberta nos
+  dois lados; pipeline, scrapers e rotas da API seguem sem teste.
 - **`POST /api/v1/scrape/start` é um stub** que retorna `501`. O scraping roda por CLI
   (`make scrape`).
 - **Viés nos extremos:** +28% abaixo de R$ 250 mil, −27% acima de R$ 1,2 milhão.
@@ -405,10 +475,17 @@ esperado por esforço:
       equipamentos num raio.
 - [ ] **CEP como chave de localização** — resolução muito mais fina que bairro. Depende de
       extrair o CEP do anúncio, que a OLX nem sempre expõe.
+- [ ] **Modelo de aluguel** — o dado já é coletado e hoje é jogado fora. Exige alvo separado
+      (aluguel mensal e preço de venda diferem em três ordens de grandeza, não cabem no mesmo
+      regressor) e uma escolha de produto na interface. É o item de maior retorno por esforço
+      depois da renda por setor.
+- [ ] **Levar `tipo` para dentro do modelo** — o campo é pedido ao usuário e ignorado; o
+      one-hot de `Tipo_Imovel` se perdeu no caminho até o dataset versionado.
 - [ ] Intervalo de predição em vez de ponto estimado, e correção do viés por faixa
-- [ ] Suíte de testes (pytest) cobrindo pipeline e API
+- [x] ~~Deploy público~~ — no ar em <https://gutoportelaa.github.io/especulai/>, estático,
+      com o modelo rodando no navegador
+- [ ] Ampliar a suíte de testes para pipeline e scrapers (a paridade do modelo web já está coberta)
 - [ ] Coleta recorrente para construir série temporal e permitir retreino
-- [ ] Deploy público (API + frontend)
 
 > **Zona eleitoral foi descartada.** O recorte é administrativo-eleitoral, desenhado para
 > equilibrar número de eleitores, e não acompanha a segmentação do mercado imobiliário. O setor

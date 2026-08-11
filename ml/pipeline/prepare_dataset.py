@@ -126,7 +126,32 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("[PREP] Iniciando limpeza e preparação de dados...")
 
     # ========================================================================
-    # 0. DEDUPLICAÇÃO
+    # 0. SOMENTE VENDA
+    # ========================================================================
+    # Os coletores trazem venda E aluguel (o scraper da OLX pagina os dois por
+    # padrão; no Rocha, 467 dos 1.164 anúncios são aluguel). Misturar as duas
+    # coisas no mesmo alvo é comparar R$ 2.200/mês com R$ 360.000.
+    #
+    # Até aqui, quem separava era só o piso de R$ 50.000 no train_model.py — uma
+    # heurística de preço no lugar de um filtro de tipo de negócio. Medido no
+    # Rocha, ela erra nas duas pontas: 4 de 467 aluguéis passam (o topo do
+    # aluguel chega a R$ 120.000) e 7 de 696 vendas são descartadas à toa.
+    if 'Tipo_Negocio' in df.columns:
+        antes = len(df)
+        negocio = df['Tipo_Negocio'].astype(str).str.strip().str.lower()
+        # Vocabulário varia por fonte: OLX grava "Venda", o Rocha grava "comprar".
+        df = df[negocio.isin({'venda', 'comprar', 'vender'})].reset_index(drop=True)
+        logger.info(
+            f"[PREP] 0. Anúncios de aluguel removidos: {antes - len(df)} ({antes} -> {len(df)})"
+        )
+    else:
+        logger.warning(
+            "[PREP] 0. Coluna Tipo_Negocio ausente — aluguel só será filtrado "
+            "pelo piso de preço no treino, que é heurístico."
+        )
+
+    # ========================================================================
+    # 0.1. DEDUPLICAÇÃO
     # ========================================================================
     # O mesmo imóvel é reanunciado várias vezes na OLX. Se as cópias sobrevivem
     # até o treino, elas se distribuem entre treino e teste e o modelo é medido
@@ -135,7 +160,7 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     if 'URL_Anuncio' in df.columns:
         antes = len(df)
         df = df.drop_duplicates(subset=['URL_Anuncio']).reset_index(drop=True)
-        logger.info(f"[PREP] 0. Anúncios duplicados removidos: {antes - len(df)} ({antes} -> {len(df)})")
+        logger.info(f"[PREP] 0.1. Anúncios duplicados removidos: {antes - len(df)} ({antes} -> {len(df)})")
 
     # ========================================================================
     # 1. CONVERSÃO DE TIPOS

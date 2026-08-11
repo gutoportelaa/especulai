@@ -44,11 +44,15 @@ export function Predict() {
 								Predição de Preços
 							</Badge>
 							<h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-								Estime o Valor do Seu Imóvel
+								Estime o Valor de Venda do Seu Imóvel
 							</h1>
+							{/* O modelo foi treinado só com anúncios de venda; aluguel é
+							    descartado no preparo do dataset. Dizer isso aqui evita que
+							    alguém leia o resultado como valor de locação. */}
 							<p className="text-muted-foreground md:text-lg">
-								Preencha os dados abaixo para obter uma estimativa precisa do
-								valor do imóvel
+								Preencha os dados abaixo para estimar o{" "}
+								<strong>preço de venda</strong> em Teresina (PI). O modelo não
+								estima aluguel.
 							</p>
 						</div>
 
@@ -246,7 +250,7 @@ export function Predict() {
 												<div className="space-y-2">
 													<div>
 														<p className="text-sm text-muted-foreground">
-															Preço Estimado
+															Preço de Venda Estimado
 														</p>
 														<p className="text-3xl font-bold text-primary">
 															R${" "}
