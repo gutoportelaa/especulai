@@ -32,11 +32,13 @@ jobs:
         working-directory: frontend
         run: bun install --frozen-lockfile
 
+      # O modelo (frontend/public/model/especulai.json) é versionado e roda no
+      # cliente — não há API para configurar aqui. Retreinou? `make export-web`
+      # e commite o JSON novo.
       - name: Build
         working-directory: frontend
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: bun run build
 
       # Pages não tem rewrite de SPA. Servir o index como 404 faz o acesso

@@ -20,6 +20,7 @@ export function Predict() {
 		prediction,
 		loading,
 		error,
+		bairros,
 		handleChange,
 		handleSubmit,
 		reset,
@@ -143,12 +144,20 @@ export function Predict() {
 												id="bairro"
 												name="bairro"
 												type="text"
+												list="bairros-conhecidos"
 												value={formData.bairro}
 												onChange={handleChange}
 												placeholder="Ex: Centro"
 												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 												required
 											/>
+											{/* Bairro fora do treino derruba a confiança para "baixa";
+											    a lista evita que o usuário caia nisso por digitação. */}
+											<datalist id="bairros-conhecidos">
+												{bairros.map((nome) => (
+													<option key={nome} value={nome} />
+												))}
+											</datalist>
 										</div>
 
 										<div className="space-y-2">
@@ -161,7 +170,7 @@ export function Predict() {
 												type="text"
 												value={formData.cidade}
 												onChange={handleChange}
-												placeholder="Ex: São Paulo"
+												placeholder="Teresina"
 												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 												required
 											/>

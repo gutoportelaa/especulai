@@ -257,6 +257,48 @@ frontend/src/
 | `/` | `Home` | Landing page |
 | `/predict` | `Predict` | Formulário de estimativa |
 
+### Inferência no cliente
+
+**O site publicado não chama a API.** O modelo roda no navegador, então o deploy
+é 100% estático (GitHub Pages) e não há servidor para hospedar, pagar ou acordar.
+
+```
+ml/pipeline/export_web.py  →  frontend/public/model/especulai.json  (293 KB / 86 KB gzip)
+                                        ↓
+              features.js  monta o vetor de 121 features
+              model.js     percorre as 200 árvores e soma
+```
+
+`especulai.json` traz `feature_columns`, `feature_defaults`, `bairro_profiles`,
+`scaler {mean, scale}` e as 200 árvores achatadas em arrays paralelos
+(`roots/left/right/feature/threshold/value`, 8.628 nós).
+
+Predição: `preco = init + learning_rate × Σ folha_i(x_normalizado)`.
+
+**Duas armadilhas que já custaram caro** — as duas estão travadas por teste:
+
+1. **Thresholds não podem ser arredondados.** As features normalizadas se
+   aglomeram perto de zero e os cortes ficam a ~1e-7 uns dos outros. Arredondar
+   para 6 casas jogava valores para o lado errado da comparação: 9 em 300 casos,
+   erro de até 1,3% no preço.
+2. **As árvores do sklearn comparam `X` já convertido para float32** contra um
+   threshold em float64. O JS tem que fazer `Math.fround(x) <= threshold`. Sem
+   isso, valores a 1e-8 do corte descem pelo ramo errado.
+
+Paridade coberta nos dois lados:
+
+| Onde | Arquivo | O que garante |
+|---|---|---|
+| Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, em 8 casos fixos + 300 aleatórios (rel 1e-6) |
+| JS | `features.test.js` | vetor de 121 features == o do Python (9 casas) |
+| JS | `model.test.js` | preço == sklearn (2 casas), via fixtures geradas pelo pytest |
+
+Retreinou o modelo? `make export-web` e **commite o JSON** — senão o site
+continua servindo o modelo antigo. As fixtures se regeneram com `uv run pytest tests/`.
+
+> A API FastAPI continua no repo e funciona (`make dev`) — ela só não é mais o
+> caminho do site publicado.
+
 ---
 
 ## 7. Makefile — Comandos
@@ -385,12 +427,21 @@ make clean          # Remove __pycache__, .pyc, caches
 | P3 | `/api/v1/scrape/start` retorna 501 permanentemente | Endpoint inativo | `scrape.py`, `scrape_service.py` |
 | P5 | `ModelService.load()` constrói artefatos mock em vez de falhar | Erros silenciosos | `model_service.py` |
 | P6 | Logging não centralizado (cada módulo chama `basicConfig`) | Logs inconsistentes | todos os módulos ML |
-| P7 | Sem testes automatizados (`tests/` não existe, mas `make test` aponta para lá) | Regressões não detectadas | — |
+| P7 | Cobertura de testes ainda rasa: só a paridade Python↔JS do modelo web está coberta. API, pipeline e scrapers seguem sem testes | Regressões não detectadas | `tests/` |
+| P23 | **`tipo` (apartamento/casa) não é feature do modelo** — não existe nenhuma coluna `Tipo_Imovel_*` nas 121 features. O formulário coleta o campo e ele só afeta o rótulo de confiança, nunca o preço | Input do usuário ignorado | `prepare_dataset.py` |
+| P24 | `densidade_comodos` é calculada em `_predict_standard` e no `features.js`, mas não existe nas `feature_columns` — o valor é descartado | Código morto nos dois lados | `model_service.py`, `prepare_dataset.py` |
 | P10 | 10 avisos de a11y (`useValidAnchor`) — links placeholder `href="#"` no rodapé | `make web-check` falha | `Footer.jsx`, `Header.jsx` |
 | P11 | Distâncias a POIs medem distância a 1 ponto fixo por categoria (provado: erro máx. 0,005 m contra a geodésica). São coordenadas polares, não acesso a serviços; a ablação mostra que toda a geo contínua vale 1,6pp de R² | Feature geoespacial ilusória | `enriquecimento_geoespacial.py` |
 | P18 | Viés por faixa: +28% abaixo de R$250k, −27% acima de R$1,2M (regressão à média) | Inútil nos extremos | `train_model.py` |
 | P19 | Módulo IBGE existe e mede corr(renda_setor, preço/m²)=0,58, mas não está ligado ao modelo principal | Melhor sinal de localização desperdiçado | `enriquecimento_ibge.py` |
 | P12 | Fatores FipeZap por bairro hardcoded | Dado estático | `enriquecimento_economico.py` |
+
+### Resolvidos em 2026-08-11
+
+| # | Problema | Solução |
+|---|---|---|
+| P25 | Endpoints de pipeline e scraping abertos: qualquer um disparava scraping e retreino | Router desmontado fora de desenvolvimento; `ENABLE_PIPELINE_API` + `PIPELINE_API_TOKEN` (Bearer), fail-closed em `apps/api/security.py` |
+| P26 | `make docker` chamava um `docker-compose.yml` que não existia | Arquivo criado; imagem de serving validada de ponta a ponta |
 
 ### Resolvidos em 2026-08-08
 

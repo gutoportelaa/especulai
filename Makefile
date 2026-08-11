@@ -7,10 +7,15 @@
         web-install web-dev web-build web-check web-fix \
         pipeline train scrape scrape-rocha scrape-rocha-teste \
         test coverage typecheck lint ci \
-        docker docker-down clean
+        docker docker-down clean \
+        export-web deploy-web
 
 # Porta padrão da API
 PORT ?= 8000
+
+# Subcaminho do site estático. GitHub Pages serve em /<repo>/; use "/" para
+# domínio próprio.
+WEB_BASE ?= /especulai/
 
 # =============================================================================
 # AJUDA
@@ -52,6 +57,10 @@ help:
 	@echo "    make docker         Sobe containers (docker compose up -d)"
 	@echo "    make docker-down    Para containers"
 	@echo "    make clean          Remove __pycache__, .pyc, .ruff_cache"
+	@echo ""
+	@echo "  DEPLOY"
+	@echo "    make export-web     Exporta o modelo treinado para o frontend"
+	@echo "    make deploy-web     Build estático em frontend/dist/"
 	@echo ""
 
 # =============================================================================
@@ -163,29 +172,14 @@ docker-down:
 # DEPLOY
 # =============================================================================
 
-HF_SPACE ?= gutoportelaa/especulai-api
+# Exporta o modelo treinado para o frontend (árvores em JSON). Rode sempre que
+# retreinar, senão o site continua servindo o modelo antigo.
+export-web:
+	uv run python -m ml.pipeline.export_web
 
-# Sobe a API para o Hugging Face Space. Inclui ml/artifacts (o .joblib servido,
-# que o .gitignore mantém fora do GitHub) e exclui dados, frontend e caches.
-deploy-api:
-	@test -f ml/artifacts/modelo_definitivo.joblib \
-		|| { echo "ERRO: ml/artifacts/modelo_definitivo.joblib ausente. Rode 'make train' ou restaure do dataset HF."; exit 1; }
-	hf upload $(HF_SPACE) . . --repo-type space \
-		--exclude "*.git/*" ".venv/*" "node_modules/*" "frontend/*" "data/*" \
-		          "notebooks/*" "reports/*" "**/__pycache__/*" "*.pyc" \
-		          ".ruff_cache/*" ".pytest_cache/*" "*.log" ".env*" \
-		--commit-message "deploy: $(shell git rev-parse --short HEAD)"
-	hf upload $(HF_SPACE) deploy/space-README.md README.md --repo-type space \
-		--commit-message "docs: card do Space"
-	@echo "Space: https://huggingface.co/spaces/$(HF_SPACE)"
-
-deploy-api-logs:
-	hf spaces logs $(HF_SPACE) --follow
-
-# Build do frontend apontando para a API publicada. Suba dist/ no Cloudflare
-# Pages / Netlify (o _redirects em public/ cuida do roteamento do SPA).
-deploy-web:
-	cd frontend && VITE_API_URL=$(API_URL) bun run build
+# Build estático. O modelo roda no cliente, então não há API para apontar.
+deploy-web: export-web
+	cd frontend && VITE_BASE=$(WEB_BASE) bun run build
 	@echo "Pronto: frontend/dist/ — publique este diretório."
 
 # =============================================================================
