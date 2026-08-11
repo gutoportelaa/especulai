@@ -466,7 +466,8 @@ Este é um projeto em evolução, e vale ser explícito sobre onde ele está:
   separação era feita só por um piso de R$ 50 mil no treino — heurística que deixava passar
   4 de 467 aluguéis e descartava 7 de 696 vendas. O filtro explícito por `Tipo_Negocio` já está
   no `prepare_dataset.py`, mas **o modelo publicado ainda é o anterior**: só vale no próximo
-  retreino.
+  retreino. A viabilidade de um modelo de aluguel separado está medida em
+  [`docs/modelo-aluguel.md`](docs/modelo-aluguel.md) — falta cerca de 10× mais dado.
 - **O campo `tipo` não afeta o preço.** Não existe nenhuma coluna `Tipo_Imovel_*` entre as 121
   features do modelo. O formulário coleta apartamento/casa, e isso só influencia o rótulo de
   confiança. Mesma origem: as features de engenharia (`Densidade_Comodos`, `Total_Dependencias`)
@@ -500,10 +501,10 @@ esperado por esforço:
       a qualidade da feature, é volume de amostra.
 - [ ] **CEP como chave de localização** — resolução muito mais fina que bairro. Depende de
       extrair o CEP do anúncio, que a OLX nem sempre expõe.
-- [ ] **Modelo de aluguel** — o dado já é coletado e hoje é jogado fora. Exige alvo separado
-      (aluguel mensal e preço de venda diferem em três ordens de grandeza, não cabem no mesmo
-      regressor) e uma escolha de produto na interface. É o item de maior retorno por esforço
-      depois da renda por setor.
+- [ ] **Modelo de aluguel** — arquitetura resolvida (segundo JSON + alternador na interface;
+      ver [`docs/modelo-aluguel.md`](docs/modelo-aluguel.md)), mas **bloqueado por dado**: os 137
+      aluguéis residenciais utilizáveis produzem R² **−0,19**, que empata com chutar a mediana.
+      A meta medida é 1.200–1.800 anúncios residenciais, ~10× o que existe hoje.
 - [ ] **Levar `tipo` para dentro do modelo** — o campo é pedido ao usuário e ignorado; o
       one-hot de `Tipo_Imovel` se perdeu no caminho até o dataset versionado.
 - [ ] Intervalo de predição em vez de ponto estimado, e correção do viés por faixa
@@ -527,6 +528,7 @@ esperado por esforço:
 | [`CLAUDE.md`](CLAUDE.md) | Guia de engenharia: convenções, estrutura, tech debt |
 | [`docs/GUIA_TREINAMENTO.md`](docs/GUIA_TREINAMENTO.md) | Pipeline de ponta a ponta |
 | [`docs/investigacao-geografica.md`](docs/investigacao-geografica.md) | **Quanto a localização explica o preço** — coleta com endereço, POIs reais e o resultado |
+| [`docs/modelo-aluguel.md`](docs/modelo-aluguel.md) | **Modelo de aluguel** — por que dois modelos, o que os 137 anúncios atuais produzem e quanto dado falta |
 | [`docs/notas-de-pesquisa.md`](docs/notas-de-pesquisa.md) | Anotações brutas de pesquisa (scraping, geocodificação, IBGE) |
 | [`notebooks/`](notebooks/) | Comparação de modelos e avaliação de métricas |
 
