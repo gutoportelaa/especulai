@@ -124,6 +124,43 @@ ganho em micro-localização.
 O esforço seguinte deve ir para **atributos do imóvel**, não para mais geografia. É lá que estão
 os 52% de variância não explicada.
 
+## Teste direto: treinar no Rocha, com tudo ligado (2026-08-11)
+
+A análise acima é correlacional. Fica a pergunta prática: e se o modelo fosse treinado no
+Rocha & Rocha, que tem tudo o que o dataset da OLX não tem — `Tipo_Imovel`, POIs reais do OSM
+(distância ao mais próximo **e** contagem em 500/1000/2000 m) e renda por setor censitário?
+
+Protocolo idêntico ao `train_model.py`: `GroupShuffleSplit` por imóvel, `GradientBoosting(200,
+0.1, 5)`, `StandardScaler`, piso de R$ 50 mil, dedup por URL.
+
+| Modelo | n treino | features | R² teste | MdAPE |
+|---|---:|---:|---:|---:|
+| **A) OLX — publicado hoje** | 3.677 | 121 | **0,74** | 18,7% |
+| B) Rocha: base + bairro + `Tipo_Imovel` | 429 | 96 | 0,33 | 21,2% |
+| C) B + POIs reais do OSM | 429 | 128 | 0,34 | 18,7% |
+| D) C + renda IBGE por setor | 429 | 132 | **0,27** | 20,8% |
+
+> R² de A não é diretamente comparável ao de B–D (amostras e conjuntos de teste diferentes).
+> O que importa é a comparação **entre** B, C e D, que dividem exatamente o mesmo split.
+
+Três leituras:
+
+1. **Volume vence riqueza de features.** Os 537 anúncios de venda do Rocha, com 96–132 features,
+   memorizam: R² de 0,99 no treino contra 0,33 no teste. Não há dado suficiente para sustentar
+   essa largura.
+2. **POIs reais quase não movem o ponteiro** (0,326 → 0,337). Substituir a distância a um ponto
+   fixo pela distância real ao equipamento mais próximo, com contagem por raio, rende 1 ponto
+   percentual de R² — coerente com a conclusão acima.
+3. **A renda do IBGE piorou** (0,337 → 0,272). A correlação de 0,58 entre renda do setor e
+   preço/m² é real, mas como feature adicional em n=429 ela adiciona mais variância do que sinal.
+
+**Decisão: o modelo publicado continua sendo o da OLX.** Trocar por qualquer um dos alternativos
+seria trocar R² 0,74 por 0,33 em nome de features mais bonitas. O caminho para corrigir o P23
+(`tipo` inerte) e o P24 (features de engenharia perdidas) passa por **recoletar volume**, não por
+trocar de fonte.
+
+Reprodução: `uv run python -m ml.experiments.comparar_fontes`
+
 ## Limites desta conclusão
 
 Vale registrar o que ela não sustenta:

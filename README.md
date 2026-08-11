@@ -120,6 +120,28 @@ aqui: o MAE em reais é dominado pelos imóveis caros e o R² esconde viés sist
 </tr>
 </table>
 
+### Quais features o modelo realmente usa
+
+São **121**, e vale ser literal sobre elas porque a lista é menor do que o pipeline sugere:
+
+| Origem | Features |
+|---|---|
+| Informado pelo usuário | `Area_m2`, `Quartos`, `Banheiros` |
+| Perfil mediano do bairro | `Latitude`, `Longitude`, `distancia_farmacias`, `distancia_escolas`, `distancia_mercados`, `distancia_hospitais`, `score_comercial`, `FipeZap_m2` |
+| One-hot | 110 colunas `Bairro_*` |
+
+Ou seja: **o usuário move três números e escolhe um bairro.** Todo o resto é preenchido a partir
+do bairro. O que *não* está na lista importa tanto quanto o que está:
+
+- **`Tipo_Imovel` não existe** — não há nenhuma coluna `Tipo_*`. O formulário pergunta
+  apartamento ou casa, e a resposta só afeta o rótulo de confiança.
+- **`Vagas_Garagem` e `Descricao_Length`** eram colunas constantes de zeros e são removidas
+  automaticamente no treino.
+- **`FipeZap_Diferenca_m2`** é vazamento de alvo (≡ `Valor_Anuncio/Area_m2 − FipeZap_m2`) e é
+  removida explicitamente. Era ela que inflava o R² para 0,99.
+- **`Densidade_Comodos`, `Preco_m2`, `Total_Dependencias`** são criadas em `prepare_dataset.py`
+  mas não estão no dataset versionado — a feature engineering inteira está inerte.
+
 ### As features de localização não medem o que o nome diz
 
 Área responde por 54% da decisão do modelo e banheiros por 13%. Em terceiro aparece
@@ -466,13 +488,16 @@ Este é um projeto em evolução, e vale ser explícito sobre onde ele está:
 A localização é o eixo com maior retorno potencial, e é o menos explorado. Em ordem de valor
 esperado por esforço:
 
+- [ ] **Recoletar volume da OLX** — virou o item nº 1. A cadeia bruta da OLX se perdeu; sobrou
+      só o dataset já preparado, sem `Tipo_Negocio` nem `Tipo_Imovel`. Sem recoletar, os dois
+      problemas acima não têm conserto e o filtro explícito de aluguel fica inerte.
 - [ ] **Renda por setor censitário (IBGE 2022)** — o módulo já existe
-      (`ml/pipeline/modules/enriquecimento_ibge.py`) e a correlação medida entre renda média do
-      responsável no setor e preço/m² foi de **0,58**, o sinal de localização mais forte já
-      encontrado no projeto. Falta ligá-lo ao modelo principal.
-- [ ] **POIs reais via OSM Overpass + KDTree** — substituir os quatro pontos fixos por distância
-      à farmácia, escola, mercado, hospital e shopping mais próximos de fato, com contagem de
-      equipamentos num raio.
+      (`ml/pipeline/modules/enriquecimento_ibge.py`) e a correlação entre renda média do
+      responsável no setor e preço/m² é de **0,58**. Mas ligá-la ao modelo do Rocha *piorou* o
+      R² de teste (0,34 → 0,27): em n=429, adiciona mais variância que sinal. Depende de volume.
+- [ ] **POIs reais via OSM Overpass + KDTree** — já construídos e disponíveis no dataset do
+      Rocha & Rocha. Medidos em 2026-08-11, rendem **1 ponto percentual de R²**; o gargalo não é
+      a qualidade da feature, é volume de amostra.
 - [ ] **CEP como chave de localização** — resolução muito mais fina que bairro. Depende de
       extrair o CEP do anúncio, que a OLX nem sempre expõe.
 - [ ] **Modelo de aluguel** — o dado já é coletado e hoje é jogado fora. Exige alvo separado
