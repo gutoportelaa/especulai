@@ -41,6 +41,11 @@ env/
 # funcione logo após o clone, sem depender do scraping.
 data/*
 !data/dataset_treino_olx_final.csv
+# Bruto da recoleta e splits congelados: sem eles o conjunto de teste muda a cada
+# rerodada e a cadeia bruta se perde de novo (P27).
+!data/raw_vivareal.csv
+!data/splits/
+!data/splits/*.csv
 *.xlsx
 
 # Artefatos de modelo
