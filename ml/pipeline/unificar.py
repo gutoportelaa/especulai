@@ -30,8 +30,12 @@ SPLITS_DIR = DATA_ROOT / "splits"
 CANONICO_FILE = DATA_ROOT / "canonico.csv"
 
 SEED = 42
+FONTES = ("vivareal", "chaves")
 FRACOES = (("treino", 0.70), ("validacao", 0.15), ("teste", 0.15))
 FAIXAS_PRECO = 5  # estratos de preço para o split não depender da sorte
+
+# Rótulos de tipo que as fontes escrevem de formas diferentes.
+ALIAS_TIPO = {"Casa Em Condominio": "Casa de Condomínio"}
 
 RESIDENCIAIS = {
     "Apartamento",
@@ -55,20 +59,45 @@ TOL_AREA_PROVAVEL, TOL_PRECO_PROVAVEL = 0.005, 0.05
 _PREFIXOS_RUA = re.compile(r"^(rua|r|avenida|av|travessa|tv|praca|pc|alameda|estrada)\b\.?\s*")
 
 
+_NUMERO_RUA = re.compile(r",?\s*(\d+)\b.*$")
+
+
+def _sem_acento(texto: str) -> str:
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+
+
 def _normaliza_rua(texto: object) -> str:
+    """Nome do logradouro sem prefixo nem número ('Av. Roraima, 2250' -> 'roraima')."""
     if not isinstance(texto, str) or not texto.strip():
         return ""
-    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
-    return _PREFIXOS_RUA.sub("", sem_acento.lower().strip())
+    base = _NUMERO_RUA.sub("", _sem_acento(texto).lower().strip())
+    return _PREFIXOS_RUA.sub("", base).strip(" ,")
+
+
+def _numero_rua(texto: object) -> str:
+    if not isinstance(texto, str):
+        return ""
+    m = _NUMERO_RUA.search(texto)
+    return m.group(1) if m else ""
+
+
+def _unifica_bairros(bairros: pd.Series) -> pd.Series:
+    """Mesma grafia para o mesmo bairro entre fontes (acento e caixa); vale a mais frequente."""
+    chave = bairros.map(lambda b: _sem_acento(str(b)).lower().strip())
+    grafia = bairros.groupby(chave).agg(lambda g: g.value_counts().index[0])
+    return chave.map(grafia)
 
 
 def carregar_fontes() -> pd.DataFrame:
     """Lê todos os `raw_<fonte>.csv` presentes e devolve no schema canônico."""
-    arquivos = sorted(DATA_ROOT.glob("raw_vivareal.csv"))
+    arquivos = [DATA_ROOT / f"raw_{fonte}.csv" for fonte in FONTES]
+    arquivos = [a for a in arquivos if a.exists()]
     if not arquivos:
         raise FileNotFoundError(f"nenhum bruto de fonte em {DATA_ROOT}")
     df = pd.concat([pd.read_csv(a) for a in arquivos], ignore_index=True)
+    df["Bairro"] = _unifica_bairros(df["Bairro"].fillna(""))
     df["Tipo_Negocio"] = df["Tipo_Negocio"].astype(str).str.strip().str.lower()
+    df["Tipo_Imovel"] = df["Tipo_Imovel"].replace(ALIAS_TIPO)
     df["Categoria"] = np.where(df["Tipo_Imovel"].isin(RESIDENCIAIS), "residencial", "outro")
     return df
 
@@ -111,6 +140,9 @@ def _nivel_par(x: pd.Series, y: pd.Series) -> str | None:
     ):
         return None
     if x["_rua"] and y["_rua"]:
+        # número diferente nos dois lados = prédios diferentes na mesma rua
+        if x["_num"] and y["_num"] and x["_num"] != y["_num"]:
+            return None
         if SequenceMatcher(None, x["_rua"], y["_rua"]).ratio() < SIMILARIDADE_RUA:
             return None
         if _proximos(x["Area_m2"], y["Area_m2"], TOL_AREA_CERTO) and _proximos(
@@ -129,6 +161,7 @@ def agrupar_duplicatas(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Atribui `ID_Grupo` por união transitiva dentro de cada bloco. Devolve (df, pares)."""
     df = df.reset_index(drop=True).copy()
     df["_rua"] = df["Endereco_Completo"].map(_normaliza_rua)
+    df["_num"] = df["Endereco_Completo"].map(_numero_rua)
     uf = _UnionFind(len(df))
     pares: list[dict[str, object]] = []
 
@@ -146,7 +179,7 @@ def agrupar_duplicatas(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     df["ID_Grupo"] = [f"g{uf.achar(i)}" for i in range(len(df))]
     df["n_no_grupo"] = df.groupby("ID_Grupo")["ID_Imovel"].transform("size")
-    return df.drop(columns="_rua"), pd.DataFrame(pares)
+    return df.drop(columns=["_rua", "_num"]), pd.DataFrame(pares)
 
 
 def dividir_por_grupo(df: pd.DataFrame) -> pd.Series:
