@@ -310,12 +310,50 @@ tem como aprender o bairro só pelos dados. No aluguel o R² sobe mas o MdAPE da
 pouco, dentro do ruído de 275 anúncios. É um sinal modesto e consistente, e o P19 deixa de ser
 "desperdiçado". As features entram no conjunto final.
 
-## 12. Próximos passos
+## 12. Treino final e teste
 
-1. Corrigir o parser do VivaReal quando o campo de bairro recebe texto do título.
-2. Pedido via e-SIC ao OMI de Teresina por dados de transação (protocolado pelo autor; aguardando
+O parser do VivaReal passou a delimitar a localização pelo **último** " em " do título (o título
+também diz "condomínio com piscina em …"), e `unificar` limpa as 5 linhas já coletadas. Isso
+mudou 3 grupos de venda e o split estratificado foi regerado (597 anúncios de venda trocaram de
+partição; aluguel intacto). O teste ainda não tinha sido aberto, então nada foi contaminado.
+
+`ml/pipeline/treino_final.py`: atributos + tipo + bairro + renda e densidade do bairro (IBGE),
+GBR(200, 0,1, profundidade 5) sobre log(preço). O intervalo conformal a 80% tem meia-largura **por
+terço de preço previsto**, calculada com resíduos fora da amostra (CV agrupada). Mobiliado ficou
+de fora: só o VivaReal o informa e o ganho foi pequeno (seção 9).
+
+| Intervalo na validação (nominal 80%) | Global (seção 10) | Por faixa |
+|---|---:|---:|
+| Venda, cobertura total | 80,1% | 82,5% |
+| Venda, terço caro | 75% | 79,3% |
+| Aluguel, cobertura total | 79,3% | 77,5% |
+| Aluguel, terço caro | 73% | 75,3% |
+
+A faixa uniformizou a cobertura, mas a validação de aluguel (275 anúncios) tem erro de ±2,4 pp.
+
+**Teste, aberto uma vez**, com o modelo reajustado em treino+validação:
+
+| | Venda (887) | Aluguel (276) |
+|---|---:|---:|
+| R² em log | 0,832 | 0,622 |
+| MdAPE | 21,1% | 24,4% |
+| Dentro de ±10% / ±20% | 26,8% / 48,6% | 25,7% / 42,8% |
+| Cobertura do intervalo de 80% | 81,4% | 80,1% |
+| Cobertura por terço (barato, meio, caro) | 78% / 84% / 82% | 86% / 76% / 80% |
+| Razão média limite superior / inferior | 2,28× | 2,61× |
+
+- **Venda:** teste e validação concordam (R² em log 0,817 → 0,832; MdAPE 20,6% → 21,1%).
+- **Aluguel:** o R² em log do teste (0,622) ficou abaixo da validação (0,698), mas a MdAPE e a
+  cobertura se mantêm. Com 276 anúncios, a diferença cabe no ruído; não se ajustou nada depois de ver o teste.
+- Menos de metade dos anúncios cai a ±20% do preço pedido. O produto é o **intervalo**, não o ponto.
+
+## 13. Próximos passos
+
+1. Exportar o modelo novo para o site (`export_web.py`, `features.js`, testes de paridade) com o
+   intervalo como saída principal e o aviso de que o alvo é preço pedido.
+2. Publicar o modelo em repositório de modelo no Hugging Face, separado do dataset privado.
+3. Pedido via e-SIC ao OMI de Teresina por dados de transação (protocolado pelo autor; aguardando
    resposta).
-3. Treino final com renda+densidade, intervalo por faixa de preço e só então abrir o teste, uma vez, no modelo final.
 
 ## Reprodução
 
@@ -327,6 +365,7 @@ uv run python -m apps.scraper.scraper_chaves --alugar --comprar
 uv run python -m apps.scraper.scraper_chaves --fatiado    # venda por tipo, passa do teto de 99 páginas
 uv run python -m ml.pipeline.unificar
 uv run python -m ml.experiments.baseline_atributos
+uv run python -m ml.pipeline.treino_final    # sem --abrir-teste; o teste já foi aberto (§12)
 ```
 
 A coleta de topo do VivaReal (primeira linha) vem antes da fatiada; as duas são incrementais.

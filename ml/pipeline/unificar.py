@@ -100,7 +100,9 @@ def carregar_fontes() -> pd.DataFrame:
     df.loc[sem_endereco, "Endereco_Completo"] = np.nan
     sem_coord = (df["Latitude"] == 0) & (df["Longitude"] == 0)
     df.loc[sem_coord, ["Latitude", "Longitude"]] = np.nan
-    df["Bairro"] = _unifica_bairros(df["Bairro"].fillna(""))
+    # Coletas antigas do VivaReal deixaram texto do título no bairro ("… elevador em Ininga").
+    df["Bairro"] = df["Bairro"].fillna("").astype(str).str.rsplit(" em ", n=1).str[-1]
+    df["Bairro"] = _unifica_bairros(df["Bairro"])
     df["Tipo_Negocio"] = df["Tipo_Negocio"].astype(str).str.strip().str.lower()
     df["Tipo_Imovel"] = df["Tipo_Imovel"].replace(ALIAS_TIPO)
     df["Categoria"] = np.where(df["Tipo_Imovel"].isin(RESIDENCIAIS), "residencial", "outro")

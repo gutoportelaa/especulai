@@ -158,8 +158,9 @@ def _parse_card(card: Tag, negocio: str) -> dict[str, object] | None:
     m_quartos = _SLUG_QUARTOS_RE.search(slug)
     m_preco_slug = _SLUG_PRECO_RE.search(slug)
 
-    # "… em Rua Álvaro Freire, Cristo Rei, Teresina" — o logradouro pode faltar.
-    localizacao = titulo.split(" em ", 1)[1] if " em " in titulo else ""
+    # "… em Rua Álvaro Freire, Cristo Rei, Teresina" — o logradouro pode faltar. O último " em "
+    # delimita a localização: o título também diz "condomínio com piscina em …" antes dela.
+    localizacao = titulo.rsplit(" em ", 1)[1] if " em " in titulo else ""
     partes = [p.strip() for p in localizacao.split(",") if p.strip()]
     bairro = partes[-2] if len(partes) >= 2 else ""
     rua = ", ".join(partes[:-2]) if len(partes) > 2 else ""
