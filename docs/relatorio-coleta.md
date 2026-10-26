@@ -243,10 +243,51 @@ bruto de 60% no R$/m² é em boa parte composição: imóveis mobiliados tendem 
 (causa do R² negativo anterior), mas a direção é consistente. O campo entra, com o aviso de que
 vale só para o VivaReal.
 
-## 10. Próximos passos
+## 10. Outliers e intervalos (só treino e validação)
 
-1. Pedido via LAI ao OMI de Teresina por dados de transação.
-2. Só então abrir o teste, uma vez, no modelo final.
+`ml/experiments/intervalos_outliers.py`. Os resíduos em log vêm de validação cruzada agrupada no
+treino. Um anúncio é "outlier" se o resíduo passa de 3,5 desvios robustos (MAD).
+
+**Outliers.** Venda: 36 de 4.183 (MAD 0,32). Aluguel: 10 de 1.347 (MAD 0,36). Tirá-los do treino:
+
+| | R² (reais) | R² em log | MdAPE |
+|---|---:|---:|---:|
+| Venda, todos | 0,700 | 0,810 | 21,2% |
+| Venda, sem outliers | 0,678 | 0,804 | 22,0% |
+| Aluguel, todos | 0,602 | 0,675 | 25,1% |
+| Aluguel, sem outliers | 0,627 | 0,681 | 23,6% |
+
+Na venda, a limpeza **piora** um pouco. No aluguel melhora, mas com 10 anúncios removidos e uma
+validação de 275, a diferença está no ruído. Os marcados são em boa parte casas grandes de preço
+alto, imóveis legítimos, mais alguns suspeitos (casa de 229 m² a R$ 80 mil, kitnet de 70 m² a
+R$ 60 mil). **Decisão:** não remover automaticamente. O limiar de 3,5 MAD serve para *sinalizar*
+anúncios a revisar; o intervalo conformal já absorve o ruído sem apagar a cauda cara.
+
+**Intervalos conformais** (meia-largura em log = quantil dos |resíduos| de treino). Cobertura na
+validação:
+
+| Nível | Venda observada | Aluguel observada | Fator multiplicativo (venda / aluguel) |
+|---|---:|---:|---:|
+| 50% | 47,7% | 46,9% | ×/÷ 1,24 / 1,27 |
+| 80% | 80,1% | 79,3% | ×/÷ 1,52 / 1,64 |
+| 90% | 91,0% | 89,5% | ×/÷ 1,79 / 1,99 |
+
+A cobertura global bate com o nível nominal nos dois modelos. **Não é uniforme:** no nível de 80%,
+o terço de imóveis mais caros fica com 75% (venda) e 73% (aluguel), e o mais barato com 89% e 84%.
+Ou seja, o intervalo é largo demais para os baratos e estreito para os caros, que é a regressão à
+média (P18) aparecendo na faixa. Em reais, um imóvel previsto em R$ 450 mil tem intervalo de 80% de
+cerca de R$ 296 mil a R$ 684 mil. É isto que o usuário precisa ver, e não um número único.
+
+Para publicar, o intervalo deve ser **por faixa de preço previsto** (conformal normalizado ou por
+terço), e não um fator único.
+
+## 11. Próximos passos
+
+1. Renda do IBGE por bairro (P19): exige baixar a malha de setores e os agregados do Censo 2022
+   para `data/ibge/`, que não estão no disco. A VivaReal não tem coordenada, então a junção seria
+   pelo nome oficial do bairro.
+2. Pedido via LAI ao OMI de Teresina por dados de transação.
+3. Só então abrir o teste, uma vez, no modelo final.
 
 ## Reprodução
 
