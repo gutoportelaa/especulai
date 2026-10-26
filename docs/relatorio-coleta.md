@@ -54,7 +54,7 @@ conhecia `Casa de Condomínio`. Com isso 147 casas residenciais estavam sendo de
 | | Bruto VivaReal | Bruto Chaves | Corpus (anúncios) | Imóveis distintos* |
 |---|---:|---:|---:|---:|
 | Aluguel | 2.086 | 1.169 | 1.898 | **1.481** |
-| Venda | 4.902 | 1.485 | 5.897 | **4.465** |
+| Venda | 4.902 | 1.534 | 5.945 | **4.485** |
 
 O corpus mantém só residencial, com área, preço dentro de faixas plausíveis (aluguel de
 R$ 300 a 25.000, venda de R$ 50 mil a 15 mi) e bairro. O resto do bruto é comercial,
@@ -67,7 +67,7 @@ prédio, contam uma vez (ver seção 5).
 | | só VivaReal | só Chaves | nas duas |
 |---|---:|---:|---:|
 | Aluguel (grupos) | 1.099 | 155 | 227 |
-| Venda (grupos) | 3.460 | 521 | 484 |
+| Venda (grupos) | 3.444 | 542 | 499 |
 
 60% dos anúncios de aluguel do Chaves e 54% dos de venda caem em grupos que também têm
 VivaReal. Conferi seis pares à mão e todos são o mesmo imóvel. Isso não mede a precisão das
@@ -114,9 +114,9 @@ quartos, banheiros) nos dois lados:
 
 | | Antigo (OLX) | VivaReal | VivaReal + Chaves |
 |---|---:|---:|---:|
-| Linhas | 5.625 | 4.748 | 5.897 |
-| Imóveis distintos (chave grossa) | 2.774 | 3.453 | **3.863** |
-| Variação sobre o antigo | — | +24% | **+39%** |
+| Linhas | 5.625 | 4.748 | 5.945 |
+| Imóveis distintos (chave grossa) | 2.774 | 3.453 | **3.879** |
+| Variação sobre o antigo | — | +24% | **+40%** |
 | Mediana de valor | R$ 430.000 | — | R$ 450.000 |
 | Mediana de R$/m² | 4.902 | — | 4.737 |
 | `Tipo_Imovel` | **ausente** | presente | presente |
@@ -161,7 +161,7 @@ aluguel:
 
 | | Treino | Validação | Teste |
 |---|---:|---:|---:|
-| Venda (anúncios) | 4.166 | 889 | 842 |
+| Venda (anúncios) | 4.183 | 874 | 888 |
 | Aluguel (anúncios) | 1.347 | 275 | 276 |
 
 O teste nunca foi aberto. O split foi regenerado duas vezes, quando o Chaves entrou e quando
@@ -175,13 +175,13 @@ alvo em log do preço, sem geografia.
 | | R² | R² em log | MdAPE | dentro de ±20% |
 |---|---:|---:|---:|---:|
 | Venda, split só VivaReal | 0,652 | 0,801 | 21,2% | 46,9% |
-| **Venda, split atual** | 0,739 | 0,813 | 20,9% | 47,4% |
+| **Venda, split atual** | 0,700 | 0,810 | 21,2% | 46,7% |
 | Aluguel, split só VivaReal | 0,534 | 0,682 | 25,2% | 42,5% |
 | **Aluguel, split atual** | 0,602 | 0,675 | 25,1% | 40,7% |
 
-O R² em reais variou entre 0,65 e 0,78 na venda só por troca de split (0,652, 0,778, 0,739),
+O R² em reais variou entre 0,65 e 0,78 na venda só por troca de split (0,652, 0,778, 0,739, 0,700),
 então **não serve para comparar**: ele é dominado pelos valores extremos. O R² em log e o MdAPE ficaram praticamente estáveis. Condomínio não mostra ganho
-claro. Por fonte, o modelo erra mais no Chaves na venda (MdAPE 25,8% contra 19,8%, com 158
+claro. Por fonte, o modelo erra mais no Chaves na venda (MdAPE 21,9% contra 20,0%, com 160
 anúncios); no aluguel também (27,9% contra 24,1%, com 59). Os tamanhos não sustentam conclusão.
 
 ## 7. Lacunas e riscos
@@ -194,19 +194,33 @@ anúncios); no aluguel também (27,9% contra 24,1%, com 59). Os tamanhos não su
    campo nunca existe. O baseline trata as duas coisas com um indicador.
 4. **Coordenadas do Chaves em nível de rua**, ausentes em 18% e com outliers (seção 3).
 5. **Precisão das regras de deduplicação não medida**, só amostrada à mão em seis pares.
-6. **~57 anúncios de venda do Chaves** ficaram além da página 99.
+6. **~8 anúncios de venda do Chaves** ainda faltam. O fatiamento por tipo (`--fatiado`) recuperou 49
+   dos ~57 que ficavam além da página 99.
 7. **Preço de anúncio, não de transação.** A margem de negociação entra como ruído.
 8. **Teste de aluguel pequeno** (276 anúncios, ~223 imóveis): qualquer métrica terá incerteza
    grande.
 
-## 8. Próximos passos
+## 8. Geografia com as coordenadas do Chaves
 
-1. Fatiar o Chaves por tipo ou bairro para pegar os ~57 restantes de venda.
-2. Refazer o teste de geografia só com o Chaves (1.284 anúncios com coordenada, contra os 498 da
-   investigação original), filtrando os outliers a mais de ~5 km do bairro.
-3. Coletar `Mobiliado` pela página de detalhe, só para o aluguel residencial.
-4. Pedido via LAI ao OMI de Teresina por dados de transação.
-5. Só então abrir o teste, uma vez, no modelo final.
+`ml/experiments/geografia_chaves.py`: só anúncios do Chaves com coordenada válida e a até 5 km
+da mediana do bairro, validação cruzada agrupada em 5 partes sobre treino e validação (teste
+fechado), média de 3 sementes. Bairro contra bairro + latitude, longitude e distância ao centro:
+
+| | n | R² em log, bairro | com geografia | MdAPE, bairro | com geografia |
+|---|---:|---:|---:|---:|---:|
+| Venda | 865 | 0,713 | 0,723 | 22,3% | 21,9% |
+| Aluguel | 248 | 0,540 | 0,559 | 27,9% | 25,6% |
+
+Os ganhos (+0,010 e +0,019) são pequenos. Numa rodada anterior, com 830 anúncios de venda,
+a diferença foi −0,011, ou seja, muda de sinal com 35 anúncios a mais. É ruído, e a conclusão
+da investigação original se mantém: além do bairro, a localização em nível de rua não ajuda
+com esta amostra.
+
+## 9. Próximos passos
+
+1. Coletar `Mobiliado` pela página de detalhe, só para o aluguel residencial.
+2. Pedido via LAI ao OMI de Teresina por dados de transação.
+3. Só então abrir o teste, uma vez, no modelo final.
 
 ## Reprodução
 
@@ -215,6 +229,7 @@ uv sync --extra pipeline   # requests e beautifulsoup4 ficam neste extra
 uv run python -m apps.scraper.scraper_vivareal --paginas-alugar 50 --paginas-comprar 50
 uv run python -m apps.scraper.scraper_vivareal --fatiado alugar --fatiado comprar
 uv run python -m apps.scraper.scraper_chaves --alugar --comprar
+uv run python -m apps.scraper.scraper_chaves --fatiado    # venda por tipo, passa do teto de 99 páginas
 uv run python -m ml.pipeline.unificar
 uv run python -m ml.experiments.baseline_atributos
 ```

@@ -196,8 +196,30 @@ def _ids_existentes() -> set[str]:
         return {row["ID_Imovel"] for row in csv.DictReader(f)}
 
 
-def coletar(negocio: str, max_paginas: int = PAGINAS_MAX) -> int:
-    """Coleta até a primeira página vazia. Devolve quantos anúncios novos gravou."""
+FATIAS_VENDA = (
+    "apartamentos",
+    "casas",
+    "casas-em-condominio",
+    "sobrados",
+    "kitnets",
+    "coberturas",
+    "flats",
+    "studios",
+)
+
+
+def _raiz(negocio: str, fatia: str | None) -> str:
+    if fatia is None:
+        return SEARCH_ROOTS[negocio]
+    sufixo = "a-venda" if negocio == "comprar" else "para-alugar"
+    return f"{BASE_URL}/{fatia}-{sufixo}/pi-teresina/"
+
+
+def coletar(negocio: str, max_paginas: int = PAGINAS_MAX, fatia: str | None = None) -> int:
+    """Coleta até a primeira página vazia. Devolve quantos anúncios novos gravou.
+
+    `fatia` restringe a um tipo (ex.: "apartamentos") para passar do teto de 99 páginas.
+    """
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
     existentes = _ids_existentes()
     novo_arquivo = not RAW_FILE.exists()
@@ -211,7 +233,7 @@ def coletar(negocio: str, max_paginas: int = PAGINAS_MAX) -> int:
             writer.writeheader()
 
         for pg in range(1, max_paginas + 1):
-            html = _fetch(session, f"{SEARCH_ROOTS[negocio]}?pg={pg}")
+            html = _fetch(session, f"{_raiz(negocio, fatia)}?pg={pg}")
             if html is None:
                 logger.error("[%s] página %d sem resposta utilizável — parando", negocio, pg)
                 break
@@ -240,7 +262,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Coletor Chaves na Mão — Teresina")
     parser.add_argument("--alugar", action="store_true")
     parser.add_argument("--comprar", action="store_true")
+    parser.add_argument(
+        "--fatiado", action="store_true", help="venda por tipo, para passar do teto de páginas"
+    )
     args = parser.parse_args()
+
+    if args.fatiado:
+        for fatia in FATIAS_VENDA:
+            logger.info("[comprar/%s] %d anúncios novos", fatia, coletar("comprar", fatia=fatia))
 
     for negocio, ativo in (("alugar", args.alugar), ("comprar", args.comprar)):
         if ativo:
