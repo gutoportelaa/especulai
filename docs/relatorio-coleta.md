@@ -281,13 +281,41 @@ cerca de R$ 296 mil a R$ 684 mil. É isto que o usuário precisa ver, e não um 
 Para publicar, o intervalo deve ser **por faixa de preço previsto** (conformal normalizado ou por
 terço), e não um fator único.
 
-## 11. Próximos passos
+## 11. Renda do bairro (IBGE, Censo 2022)
 
-1. Renda do IBGE por bairro (P19): exige baixar a malha de setores e os agregados do Censo 2022
-   para `data/ibge/`, que não estão no disco. A VivaReal não tem coordenada, então a junção seria
-   pelo nome oficial do bairro.
-2. Pedido via LAI ao OMI de Teresina por dados de transação.
-3. Só então abrir o teste, uma vez, no modelo final.
+O IBGE publica agregados **por bairro** (`Agregados_por_bairros_renda_responsavel` e
+`..._basico`), o que dispensa a malha de setores e as coordenadas: a junção é pelo nome do bairro.
+Teresina tem 123 bairros oficiais. Os arquivos ficam em `data/ibge/`, fora do git (baixados de
+`ftp.ibge.gov.br/Censos/Censo_Demografico_2022/`). O experimento é `ml/experiments/renda_ibge.py`,
+com `renda_media_responsavel` (V06004) e densidade (pessoas/km²).
+
+Quatro grafias dos portais foram mapeadas à mão para o nome oficial (Parque Piauí, Marquês,
+Porenquanto, Nossa Senhora das Graças). Com isso 99,4% dos anúncios de venda e 99,3% dos de aluguel
+casam com um bairro do IBGE. Os que sobram são "Santa Maria da Codipe", "Santa Rosa", "Centro Sul"
+e alguns campos de bairro que, na verdade, receberam texto do título do anúncio (defeito do
+parser do VivaReal, a corrigir).
+
+| | R² em log, sem IBGE | com renda+densidade | MdAPE sem → com |
+|---|---:|---:|---:|
+| Venda, CV agrupada (5.057) | 0,806 | **0,819** | — |
+| Venda, bairros com <15 anúncios (299) | 0,655 | **0,682** | — |
+| Venda, validação | 0,810 | 0,821 | 21,2% → 20,2% |
+| Aluguel, CV agrupada (1.622) | 0,690 | **0,709** | — |
+| Aluguel, bairros com <15 anúncios (370) | 0,664 | 0,668 | — |
+| Aluguel, validação | 0,675 | 0,698 | 25,1% → 25,6% |
+
+A correlação entre a renda do bairro e o R$/m² é 0,47 na venda e 0,36 no aluguel. O ganho existe e
+tem a direção esperada: maior nos bairros com poucos anúncios da venda (+0,027), onde o modelo não
+tem como aprender o bairro só pelos dados. No aluguel o R² sobe mas o MdAPE da validação piora um
+pouco, dentro do ruído de 275 anúncios. É um sinal modesto e consistente, e o P19 deixa de ser
+"desperdiçado". As features entram no conjunto final.
+
+## 12. Próximos passos
+
+1. Corrigir o parser do VivaReal quando o campo de bairro recebe texto do título.
+2. Pedido via e-SIC ao OMI de Teresina por dados de transação (protocolado pelo autor; aguardando
+   resposta).
+3. Treino final com renda+densidade, intervalo por faixa de preço e só então abrir o teste, uma vez, no modelo final.
 
 ## Reprodução
 
