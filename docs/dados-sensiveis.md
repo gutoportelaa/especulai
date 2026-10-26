@@ -18,9 +18,21 @@ centróides de bairro, sem nome nem rua. Fica como legado explícito na trava.
 
 ## Onde fica o bruto
 
-Fora do repositório, em `~/especulai-dados-privados/` (permissão 700, com `SHA256SUMS`). Para
-reproduzir o corpus, copie os três CSVs para `data/` e confira `sha256sum -c`. O destino
-definitivo recomendado é um repositório **privado** só de dados.
+- **Cópia de trabalho:** `data/` (ignorado pelo git), mais uma cópia local em
+  `~/especulai-dados-privados/` (permissão 700, com `SHA256SUMS`).
+- **Armazenamento definitivo:** dataset **privado** `gutoportelaa/especulai-dados` no Hugging Face
+  (<https://huggingface.co/datasets/gutoportelaa/especulai-dados>). Os checksums foram conferidos
+  após o envio e o acesso sem token responde 401. **Nunca torná-lo público.**
+
+Para reproduzir o corpus em outra máquina:
+
+```bash
+uv run --with huggingface_hub hf download gutoportelaa/especulai-dados --repo-type dataset --local-dir data/
+cd data && sha256sum -c SHA256SUMS
+```
+
+O modelo exportado, por outro lado, é público: não carrega anúncios (ver "O que é versionado").
+Ele irá em um repositório de **modelo** separado, nunca no repositório de dados.
 
 ## A trava
 
