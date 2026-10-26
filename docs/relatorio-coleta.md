@@ -1,7 +1,7 @@
 # Relatório da recoleta — VivaReal e Chaves na Mão
 
 > Coleta de 2026-10-24/25. Objetivo: reconstruir a cadeia bruta perdida (P27) e dar
-> volume ao modelo de aluguel. **O aluguel residencial utilizável foi de 137 para 1.580
+> volume ao modelo de aluguel. **O aluguel residencial utilizável foi de 137 para 1.481
 > imóveis distintos (11×). Na venda o ganho de volume é de 15% a 39%, conforme a régua. A
 > acurácia na validação praticamente não mudou.** Falta o campo "mobiliado", e o modelo
 > ainda não foi avaliado no conjunto de teste.
@@ -53,8 +53,8 @@ conhecia `Casa de Condomínio`. Com isso 147 casas residenciais estavam sendo de
 
 | | Bruto VivaReal | Bruto Chaves | Corpus (anúncios) | Imóveis distintos* |
 |---|---:|---:|---:|---:|
-| Aluguel | 2.086 | 1.169 | 1.898 | **1.580** |
-| Venda | 4.902 | 1.485 | 5.897 | **4.543** |
+| Aluguel | 2.086 | 1.169 | 1.898 | **1.481** |
+| Venda | 4.902 | 1.485 | 5.897 | **4.465** |
 
 O corpus mantém só residencial, com área, preço dentro de faixas plausíveis (aluguel de
 R$ 300 a 25.000, venda de R$ 50 mil a 15 mi) e bairro. O resto do bruto é comercial,
@@ -66,10 +66,10 @@ prédio, contam uma vez (ver seção 5).
 
 | | só VivaReal | só Chaves | nas duas |
 |---|---:|---:|---:|
-| Aluguel (grupos) | 1.188 | 252 | 140 |
-| Venda (grupos) | 3.529 | 596 | 418 |
+| Aluguel (grupos) | 1.099 | 155 | 227 |
+| Venda (grupos) | 3.460 | 521 | 484 |
 
-37% dos anúncios de aluguel do Chaves e 46% dos de venda caem em grupos que também têm
+60% dos anúncios de aluguel do Chaves e 54% dos de venda caem em grupos que também têm
 VivaReal. Conferi seis pares à mão e todos são o mesmo imóvel. Isso não mede a precisão das
 regras em geral.
 
@@ -81,11 +81,20 @@ regras em geral.
 | Vagas | 90% | 0% |
 | Condomínio | 52% | 0% |
 | IPTU | 20% | 0% |
-| Rua | 74% (sem número) | 100% (com número) |
-| CEP, latitude, longitude, anunciante | 0% | 100% |
+| Rua | 74% (sem número) | 81% (com número) |
+| CEP, anunciante | 0% | 100% |
+| Latitude, longitude válidas | 0% | 82% |
 
-As coordenadas do Chaves têm 871 valores distintos em 1.575 anúncios (55%). A repetição indica
-geocodificação por rua ou CEP e não por imóvel, mas **a precisão não foi medida**.
+Quando o anunciante omite o endereço, o Chaves grava a rua como "não disponível" e a coordenada
+como 0,0: são 291 dos 1.575 anúncios (18%). Uma versão anterior deste relatório contava esses
+casos como preenchidos (100%).
+
+**Precisão das coordenadas válidas** (1.284 anúncios, 102 bairros): a coordenada é a do
+logradouro ou CEP, não a do imóvel. Cada CEP tem um único ponto (mediana), e 74% dos pontos
+aparecem em um só anúncio. A distância até a mediana do bairro tem mediana de 0,49 km e P90 de
+1,35 km. No mesmo endereço com número, a dispersão tem mediana zero e P90 de 0,6 km, mas há
+casos de até 10 km, então existem coordenadas erradas. Serve como localização em nível de rua
+(~500 m), com cauda de outliers que pede filtro.
 
 ## 4. Comparativo
 
@@ -93,7 +102,7 @@ geocodificação por rua ou CEP e não por imóvel, mas **a precisão não foi m
 
 | | Rocha & Rocha (doc de aluguel) | VivaReal + Chaves | Meta |
 |---|---:|---:|---:|
-| Imóveis distintos utilizáveis | 137 | **1.580** | 1.200–1.800 |
+| Imóveis distintos utilizáveis | 137 | **1.481** | 1.200–1.800 |
 | Bairros com ≥ 5 anúncios | 7 | **65** | — |
 | Bairros com ≥ 20 anúncios | — | 28 | — |
 
@@ -134,11 +143,17 @@ negócio, tipo e bairro (grafia unificada). Dois níveis de pareamento:
   banheiros iguais, preço ±10%.
 - **Provável:** sem rua em um dos lados, área ±0,5% e preço ±5%.
 
+Defeito corrigido em 2026-10-25: o texto "não disponível" do Chaves era tratado como nome de
+rua, e 292 anúncios eram comparados entre si pela regra "certa", mais frouxa. Agora o marcador
+vale como ausência de rua. Os grupos passaram de 1.580 para 1.481 (aluguel) e de 4.543 para
+4.465 (venda), e o split foi regenerado. O teste nunca tinha sido aberto, então a troca não
+contamina nada.
+
 Os anúncios **não são apagados**: recebem o mesmo grupo, e o split é feito por grupo. O
 agrupamento é transitivo e junta demais: os maiores grupos (até 26 anúncios) são unidades
 diferentes do mesmo prédio. Isso é seguro para o split (unidades do mesmo prédio têm preço/m²
-correlacionado), mas **o grupo não serve para colapsar linhas**. Foram 2.311 pares certos e
-625 prováveis; os limiares são julgamento meu, sem medição de precisão. Uma amostra de 50
+correlacionado), mas **o grupo não serve para colapsar linhas**. Foram 2.283 pares certos e
+927 prováveis; os limiares são julgamento meu, sem medição de precisão. Uma amostra de 50
 pares por nível está em `data/splits/amostra_pares.csv`.
 
 Split 70/15/15 por grupo, estratificado por faixa de preço, semente 42, separado para venda e
@@ -146,11 +161,11 @@ aluguel:
 
 | | Treino | Validação | Teste |
 |---|---:|---:|---:|
-| Venda (anúncios) | 4.109 | 904 | 884 |
-| Aluguel (anúncios) | 1.319 | 300 | 279 |
+| Venda (anúncios) | 4.166 | 889 | 842 |
+| Aluguel (anúncios) | 1.347 | 275 | 276 |
 
-O teste nunca foi aberto. O split foi regenerado uma vez, quando o Chaves entrou; a partir
-daí fica congelado.
+O teste nunca foi aberto. O split foi regenerado duas vezes, quando o Chaves entrou e quando
+corrigi o marcador "não disponível"; a partir daqui fica congelado.
 
 ## 6. Primeiro experimento (só na validação)
 
@@ -160,15 +175,14 @@ alvo em log do preço, sem geografia.
 | | R² | R² em log | MdAPE | dentro de ±20% |
 |---|---:|---:|---:|---:|
 | Venda, split só VivaReal | 0,652 | 0,801 | 21,2% | 46,9% |
-| **Venda, split atual** | 0,778 | 0,797 | 19,6% | 50,9% |
+| **Venda, split atual** | 0,739 | 0,813 | 20,9% | 47,4% |
 | Aluguel, split só VivaReal | 0,534 | 0,682 | 25,2% | 42,5% |
-| **Aluguel, split atual** | 0,650 | 0,674 | 24,6% | 40,3% |
+| **Aluguel, split atual** | 0,602 | 0,675 | 25,1% | 40,7% |
 
-O R² em reais subiu, mas **não deve ser lido como melhora**: o split mudou, e o R² em reais é
-dominado pelos valores extremos (o baseline "mediana do bairro" caiu de 0,362 para 0,246 na
-venda). O R² em log e o MdAPE ficaram praticamente estáveis. Condomínio não mostra ganho
-claro. Por fonte, o modelo erra mais no Chaves na venda (MdAPE 25,0% contra 18,7%, com 171
-imóveis); no aluguel acontece o oposto, com 63. Os tamanhos não sustentam conclusão.
+O R² em reais variou entre 0,65 e 0,78 na venda só por troca de split (0,652, 0,778, 0,739),
+então **não serve para comparar**: ele é dominado pelos valores extremos. O R² em log e o MdAPE ficaram praticamente estáveis. Condomínio não mostra ganho
+claro. Por fonte, o modelo erra mais no Chaves na venda (MdAPE 25,8% contra 19,8%, com 158
+anúncios); no aluguel também (27,9% contra 24,1%, com 59). Os tamanhos não sustentam conclusão.
 
 ## 7. Lacunas e riscos
 
@@ -178,18 +192,18 @@ imóveis); no aluguel acontece o oposto, com 63. Os tamanhos não sustentam conc
 2. **IPTU quase vazio** no VivaReal (20%) e com erros de digitação. Provavelmente não serve.
 3. **Vagas ausentes são ambíguas.** No VivaReal a ausência pode ser "sem vaga"; no Chaves o
    campo nunca existe. O baseline trata as duas coisas com um indicador.
-4. **Precisão das coordenadas do Chaves não medida.**
+4. **Coordenadas do Chaves em nível de rua**, ausentes em 18% e com outliers (seção 3).
 5. **Precisão das regras de deduplicação não medida**, só amostrada à mão em seis pares.
 6. **~57 anúncios de venda do Chaves** ficaram além da página 99.
 7. **Preço de anúncio, não de transação.** A margem de negociação entra como ruído.
-8. **Teste de aluguel pequeno** (279 anúncios, ~237 imóveis): qualquer métrica terá incerteza
+8. **Teste de aluguel pequeno** (276 anúncios, ~223 imóveis): qualquer métrica terá incerteza
    grande.
 
 ## 8. Próximos passos
 
 1. Fatiar o Chaves por tipo ou bairro para pegar os ~57 restantes de venda.
-2. Medir a precisão das coordenadas do Chaves (por exemplo, contra o bairro declarado) e, se
-   boas, refazer o teste de geografia com n bem maior que os 498 da investigação original.
+2. Refazer o teste de geografia só com o Chaves (1.284 anúncios com coordenada, contra os 498 da
+   investigação original), filtrando os outliers a mais de ~5 km do bairro.
 3. Coletar `Mobiliado` pela página de detalhe, só para o aluguel residencial.
 4. Pedido via LAI ao OMI de Teresina por dados de transação.
 5. Só então abrir o teste, uma vez, no modelo final.

@@ -95,6 +95,11 @@ def carregar_fontes() -> pd.DataFrame:
     if not arquivos:
         raise FileNotFoundError(f"nenhum bruto de fonte em {DATA_ROOT}")
     df = pd.concat([pd.read_csv(a) for a in arquivos], ignore_index=True)
+    # O Chaves grava "não disponível" e coordenada 0,0 quando o anunciante omite o endereço.
+    sem_endereco = df["Endereco_Completo"].astype(str).str.lower().str.contains("não disponível")
+    df.loc[sem_endereco, "Endereco_Completo"] = np.nan
+    sem_coord = (df["Latitude"] == 0) & (df["Longitude"] == 0)
+    df.loc[sem_coord, ["Latitude", "Longitude"]] = np.nan
     df["Bairro"] = _unifica_bairros(df["Bairro"].fillna(""))
     df["Tipo_Negocio"] = df["Tipo_Negocio"].astype(str).str.strip().str.lower()
     df["Tipo_Imovel"] = df["Tipo_Imovel"].replace(ALIAS_TIPO)
