@@ -11,8 +11,17 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../components/ui/card";
-import { TIPO_OPTIONS } from "../features/prediction/constants";
+import {
+	NEGOCIO_OPTIONS,
+	TIPO_OPTIONS,
+} from "../features/prediction/constants";
 import { usePrediction } from "../hooks/usePrediction";
+
+// Faixas de preço pedido não merecem centavos: arredonda a milhar (venda) ou a dezena (aluguel).
+const moeda = (valor) => {
+	const passo = valor >= 10000 ? 1000 : 10;
+	return `R$ ${(Math.round(valor / passo) * passo).toLocaleString("pt-BR")}`;
+};
 
 export function Predict() {
 	const {
@@ -44,15 +53,12 @@ export function Predict() {
 								Predição de Preços
 							</Badge>
 							<h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-								Estime o Valor de Venda do Seu Imóvel
+								Estime o Preço de Venda ou Aluguel
 							</h1>
-							{/* O modelo foi treinado só com anúncios de venda; aluguel é
-							    descartado no preparo do dataset. Dizer isso aqui evita que
-							    alguém leia o resultado como valor de locação. */}
 							<p className="text-muted-foreground md:text-lg">
-								Preencha os dados abaixo para estimar o{" "}
-								<strong>preço de venda</strong> em Teresina (PI). O modelo não
-								estima aluguel.
+								Estimativa para imóveis em Teresina (PI), com uma{" "}
+								<strong>faixa de preço</strong>. É o preço{" "}
+								<strong>pedido nos anúncios</strong>, não o de fechamento.
 							</p>
 						</div>
 
@@ -60,12 +66,31 @@ export function Predict() {
 							<CardHeader>
 								<CardTitle>Informações do Imóvel</CardTitle>
 								<CardDescription>
-									Preencha todos os campos para obter a melhor estimativa
+									Os campos com * são obrigatórios
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<form onSubmit={handleSubmit} className="space-y-6">
 									<div className="grid gap-4 sm:grid-cols-2">
+										<div className="space-y-2">
+											<label htmlFor="negocio" className="text-sm font-medium">
+												Negócio *
+											</label>
+											<select
+												id="negocio"
+												name="negocio"
+												value={formData.negocio}
+												onChange={handleChange}
+												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+											>
+												{NEGOCIO_OPTIONS.map((option) => (
+													<option key={option.value} value={option.value}>
+														{option.label}
+													</option>
+												))}
+											</select>
+										</div>
+
 										<div className="space-y-2">
 											<label htmlFor="area" className="text-sm font-medium">
 												Área (m²) *
@@ -165,18 +190,18 @@ export function Predict() {
 										</div>
 
 										<div className="space-y-2">
-											<label htmlFor="cidade" className="text-sm font-medium">
-												Cidade *
+											<label htmlFor="vagas" className="text-sm font-medium">
+												Vagas de garagem
 											</label>
 											<input
-												id="cidade"
-												name="cidade"
-												type="text"
-												value={formData.cidade}
+												id="vagas"
+												name="vagas"
+												type="number"
+												min="0"
+												value={formData.vagas}
 												onChange={handleChange}
-												placeholder="Teresina"
-												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-												required
+												placeholder="Opcional"
+												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 											/>
 										</div>
 									</div>
@@ -250,17 +275,18 @@ export function Predict() {
 												<div className="space-y-2">
 													<div>
 														<p className="text-sm text-muted-foreground">
-															Preço de Venda Estimado
+															{prediction.negocio === "aluguel"
+																? "Aluguel mensal provável"
+																: "Preço de venda provável"}{" "}
+															({Math.round(prediction.nivel * 100)}% de chance)
 														</p>
 														<p className="text-3xl font-bold text-primary">
-															R${" "}
-															{prediction.preco_estimado?.toLocaleString(
-																"pt-BR",
-																{
-																	minimumFractionDigits: 2,
-																	maximumFractionDigits: 2,
-																},
-															)}
+															{moeda(prediction.minimo)} a{" "}
+															{moeda(prediction.maximo)}
+														</p>
+														<p className="text-sm text-muted-foreground">
+															Estimativa central:{" "}
+															{moeda(prediction.preco_estimado)}
 														</p>
 													</div>
 													{prediction.confianca && (

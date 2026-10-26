@@ -18,17 +18,15 @@ const titleCase = (value) => {
 };
 
 export function normalizePredictionPayload(formData) {
-	const area = toNumber(formData.area);
-	const quartos = toNumber(formData.quartos, Number.parseInt);
-	const banheiros = toNumber(formData.banheiros, Number.parseInt);
-	const tipo = (formData.tipo || "apartamento").toLowerCase();
+	const vagas = String(formData.vagas ?? "").trim();
 
 	return {
-		area,
-		quartos,
-		banheiros,
-		tipo,
+		negocio: formData.negocio === "aluguel" ? "aluguel" : "venda",
+		area: toNumber(formData.area),
+		quartos: toNumber(formData.quartos, Number.parseInt),
+		banheiros: toNumber(formData.banheiros, Number.parseInt),
+		vagas: vagas === "" ? null : toNumber(vagas, Number.parseInt),
+		tipo: (formData.tipo || "apartamento").toLowerCase(),
 		bairro: titleCase(formData.bairro || ""),
-		cidade: titleCase(formData.cidade || ""),
 	};
 }

@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { PREDICTION_DEFAULTS } from "../features/prediction/constants";
-import {
-	listarBairros,
-	loadModel,
-	predictImovel,
-} from "../features/prediction/model";
+import { listarBairros, predictImovel } from "../features/prediction/model";
 import { normalizePredictionPayload } from "../features/prediction/utils";
 
 const createDefaultForm = () => ({ ...PREDICTION_DEFAULTS });
@@ -16,12 +12,13 @@ export function usePrediction() {
 	const [error, setError] = useState(null);
 	const [bairros, setBairros] = useState([]);
 
-	// O modelo roda no cliente: puxa os ~350 KB assim que a página abre, para
-	// que o primeiro cálculo não espere o download.
+	const negocio = formData.negocio;
+
+	// O modelo roda no cliente: puxa os ~200 KB do negócio escolhido assim que a página
+	// abre, para que o primeiro cálculo não espere o download.
 	useEffect(() => {
 		let ativo = true;
-		loadModel()
-			.then(() => listarBairros())
+		listarBairros(negocio)
 			.then((lista) => {
 				if (ativo) setBairros(lista);
 			})
@@ -31,7 +28,7 @@ export function usePrediction() {
 		return () => {
 			ativo = false;
 		};
-	}, []);
+	}, [negocio]);
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
@@ -46,7 +43,7 @@ export function usePrediction() {
 
 		try {
 			const payload = normalizePredictionPayload(formData);
-			const data = await predictImovel(payload);
+			const data = await predictImovel(payload.negocio, payload);
 			setPrediction(data);
 		} catch (err) {
 			setError(err.message || "Não foi possível obter a predição");

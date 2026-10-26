@@ -105,7 +105,12 @@ def treinar(negocio: str, abrir_teste: bool) -> dict[str, object]:
 
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(
-        {"model": modelo_final, "columns": list(X_pool.columns), "intervalos": iv_final.__dict__},
+        {
+            "model": modelo_final,
+            "columns": list(X_pool.columns),
+            "intervalos": iv_final.__dict__,
+            "contagem_bairro": {str(k): int(v) for k, v in pool["Bairro"].value_counts().items()},
+        },
         ARTIFACT_DIR / f"final_{negocio}.joblib",
     )
     saida["intervalo_final"] = iv_final.__dict__

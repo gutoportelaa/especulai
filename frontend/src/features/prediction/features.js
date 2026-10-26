@@ -1,9 +1,9 @@
-// Montagem do vetor de features — espelho exato de
-// ModelService._predict_standard (apps/api/services/model_service.py).
-// Qualquer divergência aqui muda o preço em silêncio, então o contrato está
-// travado por fixtures em __fixtures__/parity.json (ver features.test.js).
+// Montagem do vetor de features — espelho de ml.experiments.baseline_atributos.matriz e
+// ml.experiments.renda_ibge.X_com (o que o treino usa). Qualquer divergência muda o preço em
+// silêncio, então o contrato está travado por fixtures em __fixtures__/parity.json
+// (geradas por tests/test_web_export_parity.py a partir do código de treino).
 
-/** Chave de comparação de bairro: sem acento, sem caixa, sem separadores. */
+/** Chave de comparação: sem acento, sem caixa, sem separadores. */
 export function normalizeBairro(value) {
 	return String(value ?? "")
 		.normalize("NFKD")
@@ -12,64 +12,64 @@ export function normalizeBairro(value) {
 		.replace(/[^a-z0-9]/g, "");
 }
 
-/**
- * Casa o bairro digitado com uma coluna one-hot do modelo.
- * @returns {{nome: string, coluna: string} | null} null se não houve no treino.
- */
-export function resolveBairro(bairroRaw, featureColumns) {
-	const alvo = normalizeBairro(bairroRaw);
+function resolverColuna(valor, prefixo, featureColumns) {
+	const alvo = normalizeBairro(valor);
 	if (!alvo) return null;
-
 	for (const col of featureColumns) {
-		if (!col.startsWith("Bairro_")) continue;
-		const nome = col.slice("Bairro_".length);
+		if (!col.startsWith(prefixo)) continue;
+		const nome = col.slice(prefixo.length);
 		if (normalizeBairro(nome) === alvo) return { nome, coluna: col };
 	}
 	return null;
 }
 
+/** @returns {{nome: string, coluna: string} | null} null se o bairro não existe no treino. */
+export function resolveBairro(bairroRaw, featureColumns) {
+	return resolverColuna(bairroRaw, "Bairro_", featureColumns);
+}
+
+export function resolveTipo(tipoRaw, featureColumns) {
+	return resolverColuna(tipoRaw, "Tipo_Imovel_", featureColumns);
+}
+
+const semVagas = (v) => v === undefined || v === null || v === "";
+
 /**
- * Monta o vetor na ordem de featureColumns. Precedência por coluna:
- * entrada do usuário > one-hot do bairro > perfil mediano do bairro >
- * mediana global do treino. O preenchimento por mediana é o que impede que
- * colunas não informadas virem 0 e achatem a predição.
+ * Monta o vetor na ordem de feature_columns. Vagas não informadas seguem o treino: 0 vagas e
+ * Vagas_informado = 0. Bairro sem renda no IBGE (ou fora do treino) usa -1 e IBGE_casou = 0.
  */
 export function buildFeatureVector(entrada, meta) {
-	const {
-		feature_columns: colunas,
-		feature_defaults: padroes,
-		bairro_profiles: perfis,
-	} = meta;
-
-	const area = Math.max(Number(entrada.area), 1);
-	const quartos = Math.trunc(Number(entrada.quartos));
-	const banheiros = Math.trunc(Number(entrada.banheiros));
+	const { feature_columns: colunas, bairro_info: info } = meta;
 
 	const bairro = resolveBairro(entrada.bairro, colunas);
-	const perfil = (bairro && perfis[bairro.nome]) || {};
+	const tipo = resolveTipo(entrada.tipo, colunas);
+	const dadosBairro = (bairro && info[bairro.nome]) || null;
+	const vagas = semVagas(entrada.vagas) ? null : Number(entrada.vagas);
 
 	const informado = {
-		Area_m2: area,
-		Quartos: quartos,
-		Banheiros: banheiros,
-		densidade_comodos: (quartos + banheiros) / area,
+		Area_m2: Math.max(Number(entrada.area), 1),
+		Quartos: Math.trunc(Number(entrada.quartos)),
+		Banheiros: Math.trunc(Number(entrada.banheiros)),
+		Vagas_Garagem: vagas ?? 0,
+		Vagas_informado: vagas === null ? 0 : 1,
+		Renda_bairro: dadosBairro ? dadosBairro.renda : -1,
+		Densidade_bairro: dadosBairro ? dadosBairro.densidade : -1,
+		IBGE_casou: dadosBairro ? dadosBairro.casou : 0,
 	};
 
 	const vetor = colunas.map((col) => {
 		if (col in informado) return informado[col];
-		if (col.startsWith("Bairro_"))
-			return bairro && col === bairro.coluna ? 1 : 0;
-		if (col in perfil) return perfil[col];
-		return padroes[col] ?? 0;
+		if (bairro && col === bairro.coluna) return 1;
+		if (tipo && col === tipo.coluna) return 1;
+		return 0;
 	});
 
-	return { vetor, bairro, temPerfil: Object.keys(perfil).length > 0 };
+	return { vetor, bairro, tipo, n: dadosBairro ? dadosBairro.n : 0 };
 }
 
-/** Confiança pelo quanto da entrada o modelo realmente viu no treino. */
-export function nivelConfianca({ bairro, temPerfil, tipo, area }) {
+/** Confiança pelo quanto o modelo viu do bairro: poucos anúncios ou fora do treino = menos. */
+export function nivelConfianca({ bairro, tipo, n, area }) {
 	if (!bairro) return "baixa";
-	if (!temPerfil || !["apartamento", "casa"].includes(tipo)) return "média";
-	if (area < 20 || area > 1000) return "média";
+	if (!tipo || n < 15 || area < 15 || area > 1000) return "média";
 	return "alta";
 }

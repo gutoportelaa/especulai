@@ -1,0 +1,36 @@
+{
+  "venda": {
+    "n_teste": 887,
+    "metricas": {
+      "R2": 0.764,
+      "R2_log": 0.832,
+      "MdAPE%": 21.06,
+      "dentro10%": 26.832,
+      "dentro20%": 48.591
+    },
+    "cobertura": 0.814,
+    "cobertura_por_faixa": [
+      0.78,
+      0.84,
+      0.819
+    ],
+    "razao_media_hi_lo": 2.28
+  },
+  "aluguel": {
+    "n_teste": 276,
+    "metricas": {
+      "R2": 0.639,
+      "R2_log": 0.622,
+      "MdAPE%": 24.443,
+      "dentro10%": 25.725,
+      "dentro20%": 42.754
+    },
+    "cobertura": 0.801,
+    "cobertura_por_faixa": [
+      0.855,
+      0.757,
+      0.8
+    ],
+    "razao_media_hi_lo": 2.61
+  }
+}

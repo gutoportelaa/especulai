@@ -263,38 +263,36 @@ frontend/src/
 é 100% estático (GitHub Pages) e não há servidor para hospedar, pagar ou acordar.
 
 ```
-ml/pipeline/export_web.py  →  frontend/public/model/especulai.json  (293 KB / 86 KB gzip)
+ml/pipeline/treino_final.py → ml/artifacts/final_{venda,aluguel}.joblib
+ml/pipeline/export_web.py   → frontend/public/model/especulai-{venda,aluguel}.json  (~200 KB cada)
                                         ↓
-              features.js  monta o vetor de 121 features
-              model.js     percorre as 200 árvores e soma
+              features.js  monta o vetor (≈120–140 features) como o treino
+              model.js     soma as 200 árvores em log e devolve preço + intervalo
 ```
 
-`especulai.json` traz `feature_columns`, `feature_defaults`, `bairro_profiles`,
-`scaler {mean, scale}` e as 200 árvores achatadas em arrays paralelos
-(`roots/left/right/feature/threshold/value`, 8.628 nós).
-
-Predição: `preco = init + learning_rate × Σ folha_i(x_normalizado)`.
+Dois modelos (venda e aluguel), alvo em log, sem scaler. Features: área, quartos, banheiros,
+vagas (+ indicador de informado), tipo, bairro (one-hot) e renda/densidade do bairro (Censo 2022).
+Predição: `preco = exp(init + learning_rate × Σ folha_i(x))`. Intervalo de 80%:
+`preco × exp(∓ meia_largura[faixa])`, com a faixa dada pelo terço de preço previsto. O alvo é o
+**preço pedido** no anúncio, e o site mostra a faixa como saída principal.
 
 **Duas armadilhas que já custaram caro** — as duas estão travadas por teste:
 
-1. **Thresholds não podem ser arredondados.** As features normalizadas se
-   aglomeram perto de zero e os cortes ficam a ~1e-7 uns dos outros. Arredondar
-   para 6 casas jogava valores para o lado errado da comparação: 9 em 300 casos,
-   erro de até 1,3% no preço.
-2. **As árvores do sklearn comparam `X` já convertido para float32** contra um
-   threshold em float64. O JS tem que fazer `Math.fround(x) <= threshold`. Sem
-   isso, valores a 1e-8 do corte descem pelo ramo errado.
+1. **Thresholds não podem ser arredondados** (cortes a ~1e-7 uns dos outros).
+2. **As árvores do sklearn comparam `X` convertido para float32** contra um threshold em
+   float64. O JS tem que fazer `Math.fround(x) <= threshold`.
 
 Paridade coberta nos dois lados:
 
 | Onde | Arquivo | O que garante |
 |---|---|---|
-| Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, em 8 casos fixos + 300 aleatórios (rel 1e-6) |
-| JS | `features.test.js` | vetor de 121 features == o do Python (9 casas) |
-| JS | `model.test.js` | preço == sklearn (2 casas), via fixtures geradas pelo pytest |
+| Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`), em 8 casos fixos + 200 aleatórios por negócio |
+| JS | `features.test.js` | vetor do JS == vetor do treino (fixtures) |
+| JS | `model.test.js` | log-preço == sklearn; faixa do intervalo == `np.searchsorted` |
 
-Retreinou o modelo? `make export-web` e **commite o JSON** — senão o site
-continua servindo o modelo antigo. As fixtures se regeneram com `uv run pytest tests/`.
+Retreinou o modelo? `uv run python -m ml.pipeline.treino_final`, `make export-web` e **commite os
+JSON**. As fixtures se regeneram com `uv run pytest tests/`. As métricas exibidas vêm de
+`ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra).
 
 > A API FastAPI continua no repo e funciona (`make dev`) — ela só não é mais o
 > caminho do site publicado.
