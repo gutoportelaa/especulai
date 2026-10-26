@@ -32,7 +32,9 @@ cd data && sha256sum -c SHA256SUMS
 ```
 
 O modelo exportado, por outro lado, é público: não carrega anúncios (ver "O que é versionado").
-Ele irá em um repositório de **modelo** separado, nunca no repositório de dados.
+Ele vai em um repositório de **modelo** separado, nunca no repositório de dados:
+`gutoportelaa/especulai-teresina` (privado até a decisão de abrir; os JSONs de
+`frontend/public/model/` e o model card, sem dado bruto).
 
 ## A trava
 
