@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 scripts/verificar_dados_sensiveis.py

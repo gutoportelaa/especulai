@@ -43,9 +43,6 @@ data/*
 !data/dataset_treino_olx_final.csv
 # Bruto da recoleta e splits congelados: sem eles o conjunto de teste muda a cada
 # rerodada e a cadeia bruta se perde de novo (P27).
-!data/raw_vivareal.csv
-!data/raw_chaves.csv
-!data/detalhes_aluguel.csv
 !data/splits/
 !data/splits/*.csv
 *.xlsx
@@ -74,3 +71,7 @@ Thumbs.db
 # o treino deixa de ser reproduzível e as métricas publicadas mudam sozinhas.
 !data/pois/
 !data/pois/*.json
+
+# Bruto de portais: dados de terceiros (anunciante, endereço). Fica fora do git; ver docs/dados-sensiveis.md
+data/raw_*.csv
+data/detalhes_*.csv
