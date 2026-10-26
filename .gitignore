@@ -45,6 +45,7 @@ data/*
 # rerodada e a cadeia bruta se perde de novo (P27).
 !data/raw_vivareal.csv
 !data/raw_chaves.csv
+!data/detalhes_aluguel.csv
 !data/splits/
 !data/splits/*.csv
 *.xlsx

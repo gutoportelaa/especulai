@@ -186,9 +186,10 @@ anúncios); no aluguel também (27,9% contra 24,1%, com 59). Os tamanhos não su
 
 ## 7. Lacunas e riscos
 
-1. **Mobiliado não foi coletado.** O doc de aluguel o aponta como causa provável do R² negativo
-   anterior. Não está no card nem no JSON-LD da listagem (a descrição aparece em 2 de 29
-   anúncios); exige a página de detalhe.
+1. **Mobiliado só existe para o VivaReal** (seção 9). No Chaves não há campo e a descrição o
+   menciona em ~7% dos anúncios, então ele ficou de fora. No VivaReal, 26% dos anúncios de
+   aluguel não têm lista de comodidades, e a ausência da comodidade foi lida como "não
+   mobiliado", o que supõe que o anunciante a marca quando existe.
 2. **IPTU quase vazio** no VivaReal (20%) e com erros de digitação. Provavelmente não serve.
 3. **Vagas ausentes são ambíguas.** No VivaReal a ausência pode ser "sem vaga"; no Chaves o
    campo nunca existe. O baseline trata as duas coisas com um indicador.
@@ -216,11 +217,36 @@ a diferença foi −0,011, ou seja, muda de sinal com 35 anúncios a mais. É ru
 da investigação original se mantém: além do bairro, a localização em nível de rua não ajuda
 com esta amostra.
 
-## 9. Próximos passos
+## 9. Mobiliado (aluguel, VivaReal)
 
-1. Coletar `Mobiliado` pela página de detalhe, só para o aluguel residencial.
-2. Pedido via LAI ao OMI de Teresina por dados de transação.
-3. Só então abrir o teste, uma vez, no modelo final.
+`apps/scraper/detalhes_aluguel.py` lê a lista de comodidades da página de detalhe e grava
+`data/detalhes_aluguel.csv` (1.471 anúncios, sem 429 depois que o intervalo passou para 6–10 s e o
+coletor passou a obedecer `Retry-After`). Dos 1.087 anúncios com lista, 15% são mobiliados.
+
+| | mediana R$/m² |
+|---|---:|
+| Mobiliado | 40,4 |
+| Não mobiliado | 25,3 |
+
+`ml/experiments/mobiliado_aluguel.py`, mesmo GBR do baseline, sem abrir o teste:
+
+| | R² em log | MdAPE |
+|---|---:|---:|
+| Validação (159 anúncios), sem mobiliado | 0,628 | 24,0% |
+| Validação, com mobiliado | 0,638 | 24,9% |
+| CV agrupada (930 anúncios), sem mobiliado | 0,682 | — |
+| CV agrupada, com mobiliado | **0,705** | — |
+
+O ganho é de +0,01 a +0,02 de R² em log, e o MdAPE não melhora na validação (n pequeno). O prêmio
+bruto de 60% no R$/m² é em boa parte composição: imóveis mobiliados tendem a ser menores
+(studios, kitnets), e a área já está no modelo. Não é o efeito que o doc de aluguel imaginava
+(causa do R² negativo anterior), mas a direção é consistente. O campo entra, com o aviso de que
+vale só para o VivaReal.
+
+## 10. Próximos passos
+
+1. Pedido via LAI ao OMI de Teresina por dados de transação.
+2. Só então abrir o teste, uma vez, no modelo final.
 
 ## Reprodução
 
