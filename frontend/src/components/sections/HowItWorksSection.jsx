@@ -7,19 +7,19 @@ export function HowItWorksSection() {
 			step: "01",
 			title: "Preencha os Dados",
 			description:
-				"Informe as características do imóvel: área, quartos, banheiros, tipo, bairro e cidade.",
+				"Informe o negócio (venda ou aluguel), a área, os quartos, os banheiros, o tipo e o bairro.",
 		},
 		{
 			step: "02",
-			title: "Análise Inteligente",
+			title: "Comparação com anúncios",
 			description:
-				"Nossa IA analisa os dados e compara com o mercado imobiliário em tempo real.",
+				"O modelo compara com anúncios de Teresina coletados em outubro de 2026 e com a renda do bairro (Censo 2022).",
 		},
 		{
 			step: "03",
 			title: "Receba a Estimativa",
 			description:
-				"Obtenha o preço estimado e o nível de confiança da predição instantaneamente.",
+				"Veja a faixa de preço provável, a estimativa central e o nível de confiança, que depende do quanto o modelo conhece o bairro.",
 		},
 	];
 
@@ -48,8 +48,8 @@ export function HowItWorksSection() {
 						Processo Simples, Resultados Poderosos
 					</h2>
 					<p className="max-w-[800px] text-muted-foreground md:text-lg">
-						Em apenas três passos, você obtém uma estimativa precisa do valor do
-						seu imóvel.
+						Em apenas três passos, você obtém uma faixa de preço para o seu
+						imóvel.
 					</p>
 				</motion.div>
 

@@ -12,7 +12,7 @@ export function FAQSection() {
 		{
 			question: "Como funciona a predição de preços?",
 			answer:
-				"Nossa plataforma utiliza inteligência artificial e machine learning para analisar as características do imóvel (área, quartos, banheiros, tipo, localização) e compará-las com dados reais do mercado imobiliário, gerando uma estimativa precisa do valor.",
+				"Dois modelos de machine learning (venda e aluguel), treinados com anúncios de imóveis de Teresina, estimam o preço a partir de área, quartos, banheiros, vagas, tipo e bairro. O bairro entra também com a renda e a densidade do Censo 2022 do IBGE. O resultado é uma faixa de preço, com 80% de chance de conter o preço anunciado.",
 		},
 		{
 			question: "A predição é gratuita?",
@@ -22,22 +22,22 @@ export function FAQSection() {
 		{
 			question: "Quão precisa é a estimativa?",
 			answer:
-				"Nossa IA foi treinada com dados reais do mercado imobiliário e oferece um nível de confiança para cada predição. A precisão varia conforme a disponibilidade de dados similares na região analisada.",
+				"Em testes com anúncios que o modelo nunca viu, a faixa contém o preço anunciado em cerca de 80% dos casos, mas é larga: o limite superior é, em média, 2,3 vezes o inferior na venda e 2,6 vezes no aluguel. Menos da metade das estimativas centrais fica a ±20% do preço anunciado. Por isso mostramos a faixa, e não só um número.",
 		},
 		{
 			question: "Quais informações são necessárias?",
 			answer:
-				"Para fazer uma predição, você precisa informar: área do imóvel (m²), número de quartos, número de banheiros, tipo do imóvel (casa, apartamento, etc.), bairro e cidade.",
+				"Para fazer uma predição, você precisa informar: área do imóvel (m²), número de quartos, número de banheiros, tipo do imóvel (apartamento, casa, sobrado, etc.) e bairro. Vagas de garagem são opcionais. Só Teresina é coberta.",
 		},
 		{
 			question: "Meus dados são seguros?",
 			answer:
-				"Sim, levamos a segurança dos seus dados muito a sério. Todas as informações são processadas de forma segura e não são compartilhadas com terceiros.",
+				"Pedimos apenas as características do imóvel, nunca nome, endereço exato ou contato.",
 		},
 		{
 			question: "Posso usar a predição para vender meu imóvel?",
 			answer:
-				"A predição é uma estimativa baseada em dados do mercado e pode ser útil como referência. No entanto, recomendamos sempre consultar um profissional do mercado imobiliário para uma avaliação completa antes de tomar decisões importantes.",
+				"A estimativa se baseia em preços pedidos em anúncios, não em preços de fechamento, que costumam ser menores. Serve como referência inicial, não como avaliação. Antes de decidir, consulte um corretor ou avaliador.",
 		},
 	];
 

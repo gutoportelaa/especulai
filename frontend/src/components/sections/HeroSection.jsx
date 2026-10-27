@@ -26,9 +26,9 @@ export function HeroSection() {
 						Descubra o Valor Real do Seu Imóvel
 					</h1>
 					<p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-						Utilize inteligência artificial para obter estimativas precisas de
-						preços imobiliários. Análise rápida, confiável e baseada em dados
-						reais do mercado.
+						Uma faixa de preço para imóveis de venda e aluguel em Teresina,
+						estimada por machine learning a partir de anúncios reais. Preço
+						pedido, não de fechamento.
 					</p>
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
 						<Link to="/predict">
@@ -52,11 +52,11 @@ export function HeroSection() {
 						</div>
 						<div className="flex items-center gap-1">
 							<Check className="size-4 text-primary" />
-							<span>Resultados instantâneos</span>
+							<span>Faixa de preço com confiança</span>
 						</div>
 						<div className="flex items-center gap-1">
 							<Check className="size-4 text-primary" />
-							<span>Baseado em dados reais</span>
+							<span>Anúncios reais de Teresina</span>
 						</div>
 					</div>
 				</motion.div>
@@ -72,7 +72,7 @@ export function HeroSection() {
 							<div className="text-center p-8">
 								<h3 className="text-2xl font-bold mb-4">Interface Intuitiva</h3>
 								<p className="text-muted-foreground">
-									Preencha os dados do imóvel e receba uma estimativa precisa em
+									Preencha os dados do imóvel e receba uma faixa de preço em
 									segundos
 								</p>
 							</div>

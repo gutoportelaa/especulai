@@ -12,8 +12,8 @@ export function Footer() {
 							<span>Especulai</span>
 						</div>
 						<p className="text-sm text-muted-foreground">
-							Plataforma inteligente de predição de preços imobiliários. Obtenha
-							estimativas precisas com tecnologia de ponta.
+							Faixas de preço de venda e aluguel para imóveis em Teresina (PI),
+							estimadas por machine learning a partir de anúncios.
 						</p>
 					</div>
 

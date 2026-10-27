@@ -22,38 +22,37 @@ export function FeaturesSection() {
 	const features = [
 		{
 			title: "Análise Rápida",
-			description:
-				"Obtenha estimativas de preços em segundos com nossa tecnologia avançada de IA.",
+			description: "Preencha seis campos e veja a faixa de preço em segundos.",
 			icon: <Zap className="size-5" />,
 		},
 		{
-			title: "Dados Precisos",
+			title: "Dados Reais",
 			description:
-				"Baseado em dados reais do mercado imobiliário para maior confiabilidade.",
+				"Treinado com anúncios de venda e aluguel de Teresina, mais renda e densidade dos bairros (IBGE).",
 			icon: <BarChart className="size-5" />,
 		},
 		{
-			title: "Seguro e Confiável",
+			title: "Privacidade",
 			description:
-				"Seus dados são protegidos com as melhores práticas de segurança.",
+				"Pedimos só características do imóvel, nunca nome, endereço exato ou contato.",
 			icon: <Shield className="size-5" />,
 		},
 		{
-			title: "Tendências de Mercado",
+			title: "Faixa, não só um número",
 			description:
-				"Acompanhe as tendências e variações de preços no mercado imobiliário.",
+				"A faixa tem 80% de chance de conter o preço anunciado, e cada estimativa vem com um nível de confiança.",
 			icon: <TrendingUp className="size-5" />,
 		},
 		{
-			title: "Resultados Instantâneos",
+			title: "Venda e aluguel",
 			description:
-				"Não precisa esperar. Receba sua predição imediatamente após preencher os dados.",
+				"Dois modelos separados, cada um calibrado para o seu mercado.",
 			icon: <Clock className="size-5" />,
 		},
 		{
-			title: "Alta Precisão",
+			title: "Transparência",
 			description:
-				"Algoritmos avançados garantem estimativas com alto nível de precisão.",
+				"Publicamos a metodologia, os erros medidos em dados de teste e as limitações do modelo.",
 			icon: <Target className="size-5" />,
 		},
 	];
@@ -79,8 +78,7 @@ export function FeaturesSection() {
 					</h2>
 					<p className="max-w-[800px] text-muted-foreground md:text-lg">
 						Nossa plataforma oferece todas as ferramentas necessárias para você
-						obter estimativas precisas e tomar decisões informadas no mercado
-						imobiliário.
+						ter uma referência de preço no mercado imobiliário.
 					</p>
 				</motion.div>
 
