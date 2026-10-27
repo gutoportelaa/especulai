@@ -10,12 +10,12 @@ export function usePrediction() {
 	const [prediction, setPrediction] = useState(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
+	const [demorando, setDemorando] = useState(false);
 	const [bairros, setBairros] = useState([]);
 
 	const negocio = formData.negocio;
 
-	// O modelo roda no cliente: puxa os ~200 KB do negócio escolhido assim que a página
-	// abre, para que o primeiro cálculo não espere o download.
+	// A lista de bairros é estática (só nomes); a estimativa vem do servidor.
 	useEffect(() => {
 		let ativo = true;
 		listarBairros(negocio)
@@ -40,6 +40,8 @@ export function usePrediction() {
 		setLoading(true);
 		setError(null);
 		setPrediction(null);
+		// Servidor ocioso leva alguns segundos para acordar: avisa em vez de parecer travado.
+		const aviso = setTimeout(() => setDemorando(true), 4000);
 
 		try {
 			const payload = normalizePredictionPayload(formData);
@@ -48,6 +50,8 @@ export function usePrediction() {
 		} catch (err) {
 			setError(err.message || "Não foi possível obter a predição");
 		} finally {
+			clearTimeout(aviso);
+			setDemorando(false);
 			setLoading(false);
 		}
 	};
@@ -62,6 +66,7 @@ export function usePrediction() {
 		formData,
 		prediction,
 		loading,
+		demorando,
 		error,
 		bairros,
 		handleChange,

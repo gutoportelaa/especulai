@@ -47,7 +47,8 @@ data/*
 !data/splits/*.csv
 *.xlsx
 
-# Artefatos de modelo
+# Artefatos de modelo. Os pesos em JSON nunca vão ao repositório público: só cifrados.
+ml/artifacts/
 *.joblib
 *.pkl
 *.h5

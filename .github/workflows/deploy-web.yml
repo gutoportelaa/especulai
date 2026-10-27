@@ -32,13 +32,20 @@ jobs:
         working-directory: frontend
         run: bun install --frozen-lockfile
 
-      # O modelo (frontend/public/model/especulai.json) é versionado e roda no
-      # cliente — não há API para configurar aqui. Retreinou? `make export-web`
-      # e commite o JSON novo.
+      # Os pesos NÃO estão no site: a estimativa vem da API de inferência (deploy/space).
+      # Sem a URL o site apontaria para localhost, então o build falha em vez de publicar quebrado.
+      # Defina em Settings > Secrets and variables > Actions > Variables: API_URL.
+      - name: Exige a URL da API
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          test -n "$API_URL" || { echo "::error::defina a variável API_URL do repositório"; exit 1; }
+
       - name: Build
         working-directory: frontend
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.API_URL }}
         run: bun run build
 
       # Pages não tem rewrite de SPA. Servir o index como 404 faz o acesso

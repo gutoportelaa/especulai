@@ -2,9 +2,9 @@
 
 1. sklearn -> árvores exportadas: percorrer o JSON tem que devolver o mesmo log-preço que
    `model.predict`, para o vetor montado pelo código de treino (`matriz` + `X_com`).
-2. Python -> JS: este teste congela entrada, vetor, preço e limites em
-   `frontend/src/features/prediction/__fixtures__/parity.json`; o bun (features.test.js,
-   model.test.js) compara contra esse arquivo.
+2. Treino -> servidor de inferência: este teste congela entrada, vetor e log-preço em
+   `tests/fixtures/parity.json`; `test_space_inferencia.py` compara a reimplementação sem sklearn
+   (`deploy/space/inferencia.py`) contra esse arquivo.
 """
 
 from __future__ import annotations
@@ -18,20 +18,31 @@ import pandas as pd
 import pytest
 
 from config.paths import ARTIFACT_DIR, PROJECT_ROOT
-from ml.experiments.baseline_atributos import matriz
 from ml.experiments.renda_ibge import X_com, com_ibge
 from ml.pipeline.export_web import NEGOCIOS, WEB_MODEL_DIR
 
-FIXTURE_PATH = (
-    PROJECT_ROOT / "frontend" / "src" / "features" / "prediction" / "__fixtures__" / "parity.json"
-)
+FIXTURE_PATH = PROJECT_ROOT / "tests" / "fixtures" / "parity.json"
 
 CASOS = [
     {"area": 90, "quartos": 3, "banheiros": 2, "tipo": "Apartamento", "bairro": "Fátima"},
     {"area": 200, "quartos": 4, "banheiros": 3, "tipo": "Casa", "bairro": "Centro"},
-    {"area": 45, "quartos": 1, "banheiros": 1, "tipo": "Apartamento", "bairro": "Jóquei", "vagas": 1},
+    {
+        "area": 45,
+        "quartos": 1,
+        "banheiros": 1,
+        "tipo": "Apartamento",
+        "bairro": "Jóquei",
+        "vagas": 1,
+    },
     {"area": 350, "quartos": 5, "banheiros": 4, "tipo": "Casa de Condomínio", "bairro": "Ininga"},
-    {"area": 60, "quartos": 2, "banheiros": 1, "tipo": "apartamento", "bairro": "fatima", "vagas": 0},
+    {
+        "area": 60,
+        "quartos": 2,
+        "banheiros": 1,
+        "tipo": "apartamento",
+        "bairro": "fatima",
+        "vagas": 0,
+    },
     {"area": 120, "quartos": 3, "banheiros": 2, "tipo": "Casa", "bairro": "Bairro Inexistente"},
     {"area": 15, "quartos": 0, "banheiros": 1, "tipo": "Kitnet", "bairro": "Centro"},
     {"area": 1200, "quartos": 6, "banheiros": 5, "tipo": "Sobrado", "bairro": "Ininga", "vagas": 4},
@@ -102,7 +113,9 @@ def par(request):
 def test_arvores_exportadas_batem_com_sklearn(par, caso):
     _, artefato, web = par
     vetor = vetor_de_treino(caso, artefato["columns"])
-    esperado = float(artefato["model"].predict(pd.DataFrame([vetor], columns=artefato["columns"]))[0])
+    esperado = float(
+        artefato["model"].predict(pd.DataFrame([vetor], columns=artefato["columns"]))[0]
+    )
     assert predizer_json(vetor, web) == pytest.approx(esperado, abs=1e-5)
 
 

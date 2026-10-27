@@ -257,42 +257,44 @@ frontend/src/
 | `/` | `Home` | Landing page |
 | `/predict` | `Predict` | Formulário de estimativa |
 
-### Inferência no cliente
+### Inferência: servidor com pesos cifrados
 
-**O site publicado não chama a API.** O modelo roda no navegador, então o deploy
-é 100% estático (GitHub Pages) e não há servidor para hospedar, pagar ou acordar.
+**Os pesos nunca vão ao site nem ao git em claro.** O site (GitHub Pages) é estático e só chama
+a API de inferência (`VITE_API_URL`); o navegador recebe a faixa de preço, não o modelo.
 
 ```
-ml/pipeline/treino_final.py → ml/artifacts/final_{venda,aluguel}.joblib
-ml/pipeline/export_web.py   → frontend/public/model/especulai-{venda,aluguel}.json  (~200 KB cada)
-                                        ↓
-              features.js  monta o vetor (≈120–140 features) como o treino
-              model.js     soma as 200 árvores em log e devolve preço + intervalo
+treino_final.py → ml/artifacts/final_{venda,aluguel}.joblib          (não versionado)
+export_web.py   → ml/artifacts/web/especulai-*.json                  (pesos em claro, não versionado)
+                → frontend/public/model/bairros.json                 (só nomes de bairro)
+cifrar_modelo.py→ deploy/space/modelo.enc   AES-256-GCM, versionado; chave em
+                                             ~/especulai-dados-privados/modelo.key (chmod 600)
+deploy/space/   → app.py (FastAPI) + inferencia.py (sem sklearn) + Dockerfile
 ```
 
-Dois modelos (venda e aluguel), alvo em log, sem scaler. Features: área, quartos, banheiros,
-vagas (+ indicador de informado), tipo, bairro (one-hot) e renda/densidade do bairro (Censo 2022).
-Predição: `preco = exp(init + learning_rate × Σ folha_i(x))`. Intervalo de 80%:
-`preco × exp(∓ meia_largura[faixa])`, com a faixa dada pelo terço de preço previsto. O alvo é o
-**preço pedido** no anúncio, e o site mostra a faixa como saída principal.
+Modelos: venda e aluguel, alvo em log, sem scaler. Features: área, quartos, banheiros, vagas
+(+ indicador de informado), tipo, bairro (one-hot) e renda/densidade do bairro (Censo 2022).
+`preco = exp(init + learning_rate × Σ folha_i(x))`; intervalo de 80% = `preco × exp(∓ w[faixa])`,
+faixa = terço de preço previsto. O alvo é o **preço pedido**.
 
-**Duas armadilhas que já custaram caro** — as duas estão travadas por teste:
+**API:** `POST /estimar {negocio, area, quartos, banheiros, vagas?, tipo, bairro}` devolve só
+`{preco_estimado, minimo, maximo, nivel, confianca}`, arredondado. Limite por IP (20/min, 200/h) e
+global (3000/h), validação estrita, CORS só para o site, nenhuma entrada em log. `MODEL_KEY` (hex) é
+segredo da hospedagem; sem ela, ou com ela errada, o processo não sobe (`--factory`).
 
-1. **Thresholds não podem ser arredondados** (cortes a ~1e-7 uns dos outros).
-2. **As árvores do sklearn comparam `X` convertido para float32** contra um threshold em
-   float64. O JS tem que fazer `Math.fround(x) <= threshold`.
-
-Paridade coberta nos dois lados:
+Duas armadilhas já travadas por teste: thresholds não podem ser arredondados, e o sklearn compara
+`X` em float32 contra threshold float64 (`inferencia._float32`).
 
 | Onde | Arquivo | O que garante |
 |---|---|---|
-| Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`), em 8 casos fixos + 200 aleatórios por negócio |
-| JS | `features.test.js` | vetor do JS == vetor do treino (fixtures) |
-| JS | `model.test.js` | log-preço == sklearn; faixa do intervalo == `np.searchsorted` |
+| Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`) |
+| Python | `tests/test_space_inferencia.py` | servidor sem sklearn == fixtures do treino; cifragem rejeita chave errada e adulteração; validação, 429 e CORS |
+| JS | `utils.test.js` | normalização do payload do formulário |
 
-Retreinou o modelo? `uv run python -m ml.pipeline.treino_final`, `make export-web` e **commite os
-JSON**. As fixtures se regeneram com `uv run pytest tests/`. As métricas exibidas vêm de
-`ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra).
+Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, commite `modelo.enc` e
+reimplante o servidor. O hook de pré-commit **bloqueia** `especulai-{venda,aluguel}.json` em claro.
+As métricas vêm de `ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra).
+Hospedagem do servidor: o Dockerfile roda em qualquer host de contêiner; defina a variável
+`API_URL` do repositório, sem a qual o workflow de deploy do site falha de propósito.
 
 > A API FastAPI continua no repo e funciona (`make dev`) — ela só não é mais o
 > caminho do site publicado.

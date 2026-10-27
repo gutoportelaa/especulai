@@ -41,6 +41,7 @@ dev = [
     "ruff>=0.4.0",
     "basedpyright>=1.14.0",
     "pytest-xdist>=3.6",
+    "cryptography>=42.0.0",
 ]
 
 [project.scripts]

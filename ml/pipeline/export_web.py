@@ -1,7 +1,7 @@
 """Exporta os modelos finais (venda e aluguel) para JSON, para inferência no navegador.
 
-O front calcula no cliente: não há API para hospedar, não há cold start e o custo é zero.
-Árvores cruas em vez de ONNX: o runtime WASM pesa dezenas de MB para 200 árvores de ~9 mil nós.
+Árvores cruas em vez de ONNX: o servidor de inferência fica sem sklearn nem runtime de ML,
+só a soma das 200 árvores de ~9 mil nós.
 
 O modelo prevê log(preço) sobre atributos crus (sem scaler):
 
@@ -12,7 +12,10 @@ Detalhe que não é opcional: as árvores do sklearn convertem `X` para float32 
 com o threshold (float64). O consumidor tem que fazer `Math.fround(x) <= threshold`.
 Thresholds não são arredondados; folhas (log-preço) vão com 6 casas, erro < 1e-6 relativo.
 
-Saída em `frontend/public/model/especulai-{venda,aluguel}.json`. As métricas são as do teste,
+Saída em `ml/artifacts/web/especulai-{venda,aluguel}.json` (NÃO versionado e fora da pasta pública:
+os pesos só chegam ao usuário cifrados, ver `cifrar_modelo.py` e `deploy/space/`). O site recebe
+apenas `frontend/public/model/bairros.json`, com os nomes dos bairros para o autocomplete.
+As métricas são as do teste,
 lidas de `metricas_teste.json` (abertas uma única vez, ver docs/relatorio-coleta.md §12).
 `tests/test_web_export_parity.py` trava a paridade com o sklearn.
 
@@ -32,7 +35,8 @@ import pandas as pd
 from config.paths import ARTIFACT_DIR, PROJECT_ROOT
 from ml.experiments.renda_ibge import com_ibge
 
-WEB_MODEL_DIR = PROJECT_ROOT / "frontend" / "public" / "model"
+WEB_MODEL_DIR = ARTIFACT_DIR / "web"
+SITE_MODEL_DIR = PROJECT_ROOT / "frontend" / "public" / "model"
 METRICAS_TESTE = Path(__file__).with_name("metricas_teste.json")
 NEGOCIOS = ("venda", "aluguel")
 CASAS_FOLHA = 6
@@ -112,7 +116,16 @@ def exportar(negocio: str, out_dir: Path | None = None) -> Path:
 
 
 def export() -> list[Path]:
-    return [exportar(n) for n in NEGOCIOS]
+    caminhos = [exportar(n) for n in NEGOCIOS]
+    bairros = {
+        n: json.loads(c.read_text("utf-8"))["bairros"]
+        for n, c in zip(NEGOCIOS, caminhos, strict=True)
+    }
+    SITE_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    (SITE_MODEL_DIR / "bairros.json").write_text(
+        json.dumps(bairros, ensure_ascii=False, separators=(",", ":")), "utf-8"
+    )
+    return caminhos
 
 
 if __name__ == "__main__":

@@ -59,7 +59,8 @@ help:
 	@echo "    make clean          Remove __pycache__, .pyc, .ruff_cache"
 	@echo ""
 	@echo "  DEPLOY"
-	@echo "    make export-web     Exporta o modelo treinado para o frontend"
+	@echo "    make export-web     Exporta os modelos finais (pesos em claro, nao versionados)"
+	@echo "    make cifrar-modelo  Cifra os pesos para o servidor de inferencia"
 	@echo "    make deploy-web     Build estático em frontend/dist/"
 	@echo ""
 
@@ -172,13 +173,23 @@ docker-down:
 # DEPLOY
 # =============================================================================
 
-# Exporta o modelo treinado para o frontend (árvores em JSON). Rode sempre que
-# retreinar, senão o site continua servindo o modelo antigo.
+# Exporta os modelos finais para ml/artifacts/web/ (pesos em claro, NÃO versionados) e a lista
+# de bairros para o site. Rode sempre que retreinar (`python -m ml.pipeline.treino_final`).
 export-web:
 	uv run python -m ml.pipeline.export_web
 
-# Build estático. O modelo roda no cliente, então não há API para apontar.
-deploy-web: export-web
+# Cifra os pesos (AES-256-GCM) em deploy/space/modelo.enc, que é o que vai para o servidor de
+# inferência. A chave fica em ~/especulai-dados-privados/modelo.key, fora do repositório.
+cifrar-modelo: export-web
+	uv run --extra dev python -m ml.pipeline.cifrar_modelo
+
+# API de inferência local (precisa da chave): http://localhost:7860/saude
+api-inferencia:
+	cd deploy/space && MODEL_KEY=$$(cat ~/especulai-dados-privados/modelo.key) \
+		uv run --extra dev uvicorn --factory app:criar_app --port 7860
+
+# Build estático. Aponte VITE_API_URL para a API de inferência.
+deploy-web:
 	cd frontend && VITE_BASE=$(WEB_BASE) bun run build
 	@echo "Pronto: frontend/dist/ — publique este diretório."
 

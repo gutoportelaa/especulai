@@ -17,8 +17,12 @@ export async function apiFetch(path, options = {}) {
 	const payload = await parseJSON(response);
 
 	if (!response.ok) {
+		// 422 do FastAPI traz uma lista de erros de campo, não um texto.
+		const detail = Array.isArray(payload?.detail)
+			? "Confira os valores informados (área, quartos, banheiros e bairro)."
+			: payload?.detail;
 		const message =
-			payload?.detail || payload?.message || "Erro ao comunicar com o servidor";
+			detail || payload?.message || "Erro ao comunicar com o servidor";
 		throw new Error(message);
 	}
 

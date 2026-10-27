@@ -394,6 +394,7 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "basedpyright" },
+    { name = "cryptography" },
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -418,6 +419,7 @@ pipeline = [
 requires-dist = [
     { name = "basedpyright", marker = "extra == 'dev'", specifier = ">=1.14.0" },
     { name = "beautifulsoup4", marker = "extra == 'pipeline'", specifier = ">=4.12.0" },
+    { name = "cryptography", marker = "extra == 'dev'", specifier = ">=42.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "geopandas", marker = "extra == 'pipeline'", specifier = ">=1.1.4" },
     { name = "geopy", marker = "extra == 'pipeline'", specifier = ">=2.4.0" },

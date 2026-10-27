@@ -28,6 +28,7 @@ export function Predict() {
 		formData,
 		prediction,
 		loading,
+		demorando,
 		error,
 		bairros,
 		handleChange,
@@ -213,7 +214,11 @@ export function Predict() {
 											className="flex-1 rounded-full"
 											size="lg"
 										>
-											{loading ? "Processando..." : "Calcular Preço"}
+											{loading
+												? demorando
+													? "Acordando o servidor..."
+													: "Processando..."
+												: "Calcular Preço"}
 										</Button>
 										{prediction && (
 											<Button
