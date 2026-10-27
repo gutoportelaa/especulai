@@ -1,0 +1,23 @@
+name = "especulai-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Pesos cifrados entram no bundle como bytes. A chave NÃO está aqui: `wrangler secret put MODEL_KEY`.
+[[rules]]
+type = "Data"
+globs = ["**/*.enc"]
+fallthrough = false
+
+[vars]
+ALLOWED_ORIGINS = "https://gutoportelaa.github.io,http://localhost:5173"
+LIMITE_POR_MINUTO = "20"
+LIMITE_POR_HORA = "200"
+LIMITE_GLOBAL_POR_HORA = "3000"
+
+[[durable_objects.bindings]]
+name = "LIMITADOR"
+class_name = "Limitador"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Limitador"]

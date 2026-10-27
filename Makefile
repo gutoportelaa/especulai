@@ -178,15 +178,25 @@ docker-down:
 export-web:
 	uv run python -m ml.pipeline.export_web
 
-# Cifra os pesos (AES-256-GCM) em deploy/space/modelo.enc, que é o que vai para o servidor de
+# Cifra os pesos (AES-256-GCM) em deploy/worker/modelos/*.enc, que é o que vai para o servidor de
 # inferência. A chave fica em ~/especulai-dados-privados/modelo.key, fora do repositório.
 cifrar-modelo: export-web
 	uv run --extra dev python -m ml.pipeline.cifrar_modelo
 
-# API de inferência local (precisa da chave): http://localhost:7860/saude
+# API de inferência local (Cloudflare Worker em modo local; exige Node 22+ e a chave):
+# http://localhost:8787/saude
 api-inferencia:
-	cd deploy/space && MODEL_KEY=$$(cat ~/especulai-dados-privados/modelo.key) \
-		uv run --extra dev uvicorn --factory app:criar_app --port 7860
+	cd deploy/worker && bun install --frozen-lockfile \
+		&& printf 'MODEL_KEY=%s\n' "$$(cat ~/especulai-dados-privados/modelo.key)" > .dev.vars \
+		&& chmod 600 .dev.vars && node node_modules/wrangler/bin/wrangler.js dev
+
+# Testes do Worker (paridade com o sklearn, cifragem, validação, limite de consultas, CORS).
+test-worker:
+	cd deploy/worker && bun test
+
+# Publica o Worker. Antes: `wrangler login` e `wrangler secret put MODEL_KEY` (ver deploy/worker/README.md).
+deploy-api:
+	cd deploy/worker && node node_modules/wrangler/bin/wrangler.js deploy
 
 # Build estático. Aponte VITE_API_URL para a API de inferência.
 deploy-web:

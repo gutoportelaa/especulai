@@ -1,19 +1,19 @@
-"""Cifra os modelos exportados para o servidor de inferência (`deploy/space/modelo.enc`).
+"""Cifra os modelos exportados para o servidor de inferência (`deploy/worker/modelos/*.enc`).
 
-Os pesos são o ativo: nunca vão em claro para o git nem para a pasta pública do site. O pacote
-(venda + aluguel) é comprimido e cifrado com AES-256-GCM; o formato é
-`ESPC1 | nonce(12) | ciphertext+tag`, com o rótulo de versão como dado associado.
+Os pesos são o ativo: nunca vão em claro para o git nem para a pasta pública do site. Cada modelo
+(venda, aluguel) é cifrado separado com AES-256-GCM, sem compressão: o Worker só abre o que a
+requisição usa, e descompressão gastaria CPU do plano gratuito. Formato:
+`ESPC2 | nonce(12) | ciphertext+tag(16)`, com o rótulo de versão como dado associado.
 
 A chave de 256 bits é gerada uma vez e fica em `~/especulai-dados-privados/modelo.key`
 (chmod 600), fora do repositório. No servidor ela entra como segredo (`MODEL_KEY`, em hex).
 Perdeu a chave? Gere outra e recifre: os pesos em claro vêm de `ml.pipeline.export_web`.
 
-Uso: uv run --with cryptography python -m ml.pipeline.cifrar_modelo
+Uso: uv run --extra dev python -m ml.pipeline.cifrar_modelo
 """
 
 from __future__ import annotations
 
-import gzip
 import json
 import os
 from pathlib import Path
@@ -22,10 +22,10 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from ml.pipeline.export_web import NEGOCIOS, WEB_MODEL_DIR
 
-MAGIC = b"ESPC1"
-AAD = b"especulai-modelo-v1"
+MAGIC = b"ESPC2"
+AAD = b"especulai-modelo-v2"
 CHAVE = Path.home() / "especulai-dados-privados" / "modelo.key"
-SAIDA = Path(__file__).resolve().parents[2] / "deploy" / "space" / "modelo.enc"
+SAIDA = Path(__file__).resolve().parents[2] / "deploy" / "worker" / "modelos"
 
 
 def chave() -> bytes:
@@ -39,16 +39,19 @@ def chave() -> bytes:
     return nova
 
 
-def cifrar() -> Path:
-    pacote = {
-        n: json.loads((WEB_MODEL_DIR / f"especulai-{n}.json").read_text("utf-8")) for n in NEGOCIOS
-    }
-    claro = gzip.compress(json.dumps(pacote, separators=(",", ":")).encode(), mtime=0)
-    nonce = os.urandom(12)
-    SAIDA.parent.mkdir(parents=True, exist_ok=True)
-    SAIDA.write_bytes(MAGIC + nonce + AESGCM(chave()).encrypt(nonce, claro, AAD))
-    print(f"[OK] {SAIDA} ({SAIDA.stat().st_size / 1024:.0f} KB); chave em {CHAVE}")
-    return SAIDA
+def cifrar() -> list[Path]:
+    SAIDA.mkdir(parents=True, exist_ok=True)
+    cifra = AESGCM(chave())
+    saidas = []
+    for negocio in NEGOCIOS:
+        claro = (WEB_MODEL_DIR / f"especulai-{negocio}.json").read_bytes()
+        claro = json.dumps(json.loads(claro), separators=(",", ":")).encode()
+        nonce = os.urandom(12)
+        destino = SAIDA / f"{negocio}.enc"
+        destino.write_bytes(MAGIC + nonce + cifra.encrypt(nonce, claro, AAD))
+        print(f"[OK] {destino.name} ({destino.stat().st_size / 1024:.0f} KB)")
+        saidas.append(destino)
+    return saidas
 
 
 if __name__ == "__main__":

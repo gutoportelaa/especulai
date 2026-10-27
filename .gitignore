@@ -76,3 +76,8 @@ Thumbs.db
 # Bruto de portais: dados de terceiros (anunciante, endereço). Fica fora do git; ver docs/dados-sensiveis.md
 data/raw_*.csv
 data/detalhes_*.csv
+
+# Worker: segredos locais e dependências
+.dev.vars
+deploy/worker/node_modules/
+deploy/worker/.wrangler/

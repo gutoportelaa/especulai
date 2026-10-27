@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 CAMINHOS_PROIBIDOS = re.compile(r"^data/(raw_[^/]+|detalhes_[^/]+)\.csv$")
-PESOS_EM_CLARO = re.compile(r"(^|/)especulai-(venda|aluguel)\.json$")
+PESOS_EM_CLARO = re.compile(r"(^|/)(especulai-(venda|aluguel)\.json|\.dev\.vars)$")
 COLUNAS_PROIBIDAS = {"anunciante", "endereco_completo", "cep", "telefone", "email", "cpf"}
 # Já versionado antes desta regra; contém URL e centróides de bairro, sem nome nem rua.
 LEGADO = {"data/dataset_treino_olx_final.csv"}
@@ -32,7 +32,7 @@ def problemas(caminho: str) -> list[str]:
     if CAMINHOS_PROIBIDOS.match(caminho):
         return [f"{caminho}: bruto de portal não vai para o git"]
     if PESOS_EM_CLARO.search(caminho):
-        return [f"{caminho}: pesos em claro não vão para o git (só cifrados, deploy/space)"]
+        return [f"{caminho}: pesos ou chave em claro não vão para o git (só cifrados, deploy/worker)"]
     if not caminho.endswith(".csv") or caminho in LEGADO:
         return []
     with Path(caminho).open(encoding="utf-8", newline="") as f:

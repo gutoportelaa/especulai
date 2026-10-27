@@ -32,7 +32,7 @@ jobs:
         working-directory: frontend
         run: bun install --frozen-lockfile
 
-      # Os pesos NÃO estão no site: a estimativa vem da API de inferência (deploy/space).
+      # Os pesos NÃO estão no site: a estimativa vem da API de inferência (deploy/worker).
       # Sem a URL o site apontaria para localhost, então o build falha em vez de publicar quebrado.
       # Defina em Settings > Secrets and variables > Actions > Variables: API_URL.
       - name: Exige a URL da API

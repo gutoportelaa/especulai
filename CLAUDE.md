@@ -257,7 +257,7 @@ frontend/src/
 | `/` | `Home` | Landing page |
 | `/predict` | `Predict` | Formulário de estimativa |
 
-### Inferência: servidor com pesos cifrados
+### Inferência: Cloudflare Worker com pesos cifrados
 
 **Os pesos nunca vão ao site nem ao git em claro.** O site (GitHub Pages) é estático e só chama
 a API de inferência (`VITE_API_URL`); o navegador recebe a faixa de preço, não o modelo.
@@ -266,9 +266,10 @@ a API de inferência (`VITE_API_URL`); o navegador recebe a faixa de preço, nã
 treino_final.py → ml/artifacts/final_{venda,aluguel}.joblib          (não versionado)
 export_web.py   → ml/artifacts/web/especulai-*.json                  (pesos em claro, não versionado)
                 → frontend/public/model/bairros.json                 (só nomes de bairro)
-cifrar_modelo.py→ deploy/space/modelo.enc   AES-256-GCM, versionado; chave em
-                                             ~/especulai-dados-privados/modelo.key (chmod 600)
-deploy/space/   → app.py (FastAPI) + inferencia.py (sem sklearn) + Dockerfile
+cifrar_modelo.py→ deploy/worker/modelos/{venda,aluguel}.enc          AES-256-GCM, versionado;
+                                             chave em ~/especulai-dados-privados/modelo.key (600)
+deploy/worker/  → src/inferencia.js (sem sklearn) + handler.js (rotas) + limite.js
+                  + index.js (liga segredos e Durable Object) + wrangler.toml
 ```
 
 Modelos: venda e aluguel, alvo em log, sem scaler. Features: área, quartos, banheiros, vagas
@@ -277,24 +278,32 @@ Modelos: venda e aluguel, alvo em log, sem scaler. Features: área, quartos, ban
 faixa = terço de preço previsto. O alvo é o **preço pedido**.
 
 **API:** `POST /estimar {negocio, area, quartos, banheiros, vagas?, tipo, bairro}` devolve só
-`{preco_estimado, minimo, maximo, nivel, confianca}`, arredondado. Limite por IP (20/min, 200/h) e
-global (3000/h), validação estrita, CORS só para o site, nenhuma entrada em log. `MODEL_KEY` (hex) é
-segredo da hospedagem; sem ela, ou com ela errada, o processo não sobe (`--factory`).
+`{preco_estimado, minimo, maximo, nivel, confianca}`, arredondado. `GET /saude` abre os dois
+modelos (503 se a chave estiver errada). Limite por IP (20/min, 200/h) e global (3000/h) num
+Durable Object, pelo IP do `CF-Connecting-IP` (o `X-Forwarded-For` é ignorado); falha fechada se
+o limitador cair. Validação estrita, CORS só para o site, nenhuma entrada em log, erros genéricos.
+`MODEL_KEY` (hex, 64 caracteres) é segredo do Worker (`wrangler secret put MODEL_KEY`).
 
-Duas armadilhas já travadas por teste: thresholds não podem ser arredondados, e o sklearn compara
-`X` em float32 contra threshold float64 (`inferencia._float32`).
+Medido: abrir o modelo na primeira requisição custa ~4,5 ms de CPU (1–2 ms depois) e estimar
+0,1–0,5 ms, contra o teto de 10 ms do plano grátis. Se o plano mudar, meça de novo.
+
+Armadilhas travadas por teste: thresholds não podem ser arredondados, e o sklearn compara `X`
+em float32 contra threshold float64 (`Math.fround` em `preverLog`).
 
 | Onde | Arquivo | O que garante |
 |---|---|---|
 | Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`) |
-| Python | `tests/test_space_inferencia.py` | servidor sem sklearn == fixtures do treino; cifragem rejeita chave errada e adulteração; validação, 429 e CORS |
-| JS | `utils.test.js` | normalização do payload do formulário |
+| Python | `tests/test_cifrar_modelo.py` | formato do `.enc`, chave de 256 bits (600), chave errada/adulteração rejeitadas, nonce novo |
+| JS | `deploy/worker/test/inferencia.test.js` | Worker == fixtures do sklearn; abre o `.enc` feito pelo Python; rejeita chave errada |
+| JS | `deploy/worker/test/handler.test.js` | validação, 429, IP forjado, CORS, 503 genérico, falha fechada |
+| JS | `deploy/worker/test/limite.test.js` | janelas por minuto/hora/global |
+| JS | `frontend/.../utils.test.js` | normalização do payload do formulário |
 
-Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, commite `modelo.enc` e
-reimplante o servidor. O hook de pré-commit **bloqueia** `especulai-{venda,aluguel}.json` em claro.
-As métricas vêm de `ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra).
-Hospedagem do servidor: o Dockerfile roda em qualquer host de contêiner; defina a variável
-`API_URL` do repositório, sem a qual o workflow de deploy do site falha de propósito.
+Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, `uv run pytest tests/`
+(regera as fixtures), `make test-worker`, commite os `.enc` e `make deploy-api`. O hook de
+pré-commit **bloqueia** `especulai-{venda,aluguel}.json` e `.dev.vars`. As métricas vêm de
+`ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra). Defina a variável
+`API_URL` do repositório; sem ela o workflow de deploy do site falha de propósito.
 
 > A API FastAPI continua no repo e funciona (`make dev`) — ela só não é mais o
 > caminho do site publicado.
