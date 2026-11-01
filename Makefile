@@ -59,7 +59,7 @@ help:
 	@echo "    make clean          Remove __pycache__, .pyc, .ruff_cache"
 	@echo ""
 	@echo "  DEPLOY"
-	@echo "    make export-web     Exporta os modelos finais (pesos em claro, nao versionados)"
+	@echo "    make export-web     Exporta os modelos (pesos em claro, nao versionados) e as metricas do site"
 	@echo "    make cifrar-modelo  Cifra os pesos para o servidor de inferencia"
 	@echo "    make deploy-web     Build estático em frontend/dist/"
 	@echo ""
@@ -174,7 +174,8 @@ docker-down:
 # =============================================================================
 
 # Exporta os modelos finais para ml/artifacts/web/ (pesos em claro, NÃO versionados) e a lista
-# de bairros para o site. Rode sempre que retreinar (`python -m ml.pipeline.treino_final`).
+# de bairros e as métricas/gráficos da página Como Funciona (metricas-modelo.json, versionado).
+# Rode sempre que retreinar (`python -m ml.pipeline.treino_final`).
 export-web:
 	uv run python -m ml.pipeline.export_web
 

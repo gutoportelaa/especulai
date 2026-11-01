@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge } from "../ui/badge";
 
 export function HowItWorksSection() {
@@ -72,6 +74,16 @@ export function HowItWorksSection() {
 							<p className="text-muted-foreground">{step.description}</p>
 						</motion.div>
 					))}
+				</div>
+
+				<div className="mt-14 text-center">
+					<Link
+						to="/como-funciona"
+						className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+					>
+						Ver a metodologia, os resultados e as limitações
+						<ArrowRight className="size-4" />
+					</Link>
 				</div>
 			</div>
 		</section>

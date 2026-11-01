@@ -256,6 +256,13 @@ frontend/src/
 |---|---|---|
 | `/` | `Home` | Landing page |
 | `/predict` | `Predict` | Formulário de estimativa |
+| `/como-funciona` | `ComoFunciona` | Metodologia, resultados do teste, confiança, limitações |
+| `/faq` | `Faq` | Perguntas por categoria, com âncoras (`/faq#privacidade`) |
+
+Links internos **sempre** por `<Link>` do router (inclusive âncoras: `to={{ pathname: "/", hash: "#features" }}`).
+`<a href="/#...">` ignora o basename `/especulai/` e dá 404 no GitHub Pages. `ScrollToHash` rola até a
+âncora e volta ao topo ao trocar de página. Textos e números das páginas ficam em
+`features/conteudo/{metodologia,faq}.js`; se o modelo for retreinado, atualize os números de lá.
 
 ### Inferência: Cloudflare Worker com pesos cifrados
 
@@ -293,16 +300,29 @@ em float32 contra threshold float64 (`Math.fround` em `preverLog`).
 | Onde | Arquivo | O que garante |
 |---|---|---|
 | Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`) |
+| Python | `tests/test_metricas_site.py` | `metricas-modelo.json`, SVGs e tabela do README == modelo publicado e teste medido |
 | Python | `tests/test_cifrar_modelo.py` | formato do `.enc`, chave de 256 bits (600), chave errada/adulteração rejeitadas, nonce novo |
 | JS | `deploy/worker/test/inferencia.test.js` | Worker == fixtures do sklearn; abre o `.enc` feito pelo Python; rejeita chave errada |
 | JS | `deploy/worker/test/handler.test.js` | validação, 429, IP forjado, CORS, 503 genérico, falha fechada |
 | JS | `deploy/worker/test/limite.test.js` | janelas por minuto/hora/global |
 | JS | `frontend/.../utils.test.js` | normalização do payload do formulário |
+| JS | `frontend/.../escalas.test.js` | escalas e marcas dos gráficos, formatação pt-BR |
 
 Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, `uv run pytest tests/`
-(regera as fixtures), `make test-worker`, commite os `.enc` e `make deploy-api`. O hook de
-pré-commit **bloqueia** `especulai-{venda,aluguel}.json` e `.dev.vars`. As métricas vêm de
-`ml/pipeline/metricas_teste.json` (teste aberto uma única vez; não reabra). Defina a variável
+(regera as fixtures), `make test-worker`, commite os `.enc` **e o `metricas-modelo.json`**, e
+`make deploy-api`. O hook de pré-commit **bloqueia** `especulai-{venda,aluguel}.json` e `.dev.vars`.
+
+**Métricas do site, automáticas.** `treino_final` grava no artefato o diagnóstico fora da amostra
+(previsto × pedido em 10 faixas, viés em 5, a partir da CV agrupada que calibra a faixa) e a
+impressão digital do modelo. Com `--abrir-teste` (só num split novo; o atual já foi aberto, não
+reabra) ele mesmo grava `ml/pipeline/metricas_teste.json` com essa impressão. `export_web` (roda
+dentro de `make cifrar-modelo`) gera `frontend/src/features/conteudo/metricas-modelo.json`, só com
+agregados, e **recusa** se o teste medido não for do modelo atual. A página Como Funciona, o FAQ e
+os gráficos leem desse arquivo (`features/conteudo/modelo.js`); commitá-lo dispara o deploy do
+site. Do mesmo JSON, `graficos_readme.py` (chamado pelo `export_web`) regera os SVGs de
+`docs/graficos/` e a tabela de resultados do README, entre `<!-- resultados:inicio/fim -->`: não
+edite esse trecho à mão. `tests/test_metricas_site.py` falha se o arquivo divergir do modelo ou do teste, e um atributo
+novo sem grupo em `GRUPOS_ATRIBUTO` quebra o export de propósito. Defina a variável
 `API_URL` do repositório; sem ela o workflow de deploy do site falha de propósito.
 
 > A API FastAPI continua no repo e funciona (`make dev`) — ela só não é mais o
@@ -440,11 +460,16 @@ make clean          # Remove __pycache__, .pyc, caches
 | P23 | **`tipo` (apartamento/casa) não é feature do modelo** — não existe nenhuma coluna `Tipo_Imovel_*` nas 121 features. O formulário coleta o campo e ele só afeta o rótulo de confiança, nunca o preço | Input do usuário ignorado | `prepare_dataset.py` |
 | P24 | **Nenhuma feature de engenharia chegou ao modelo.** `prepare_dataset.py` cria `Densidade_Comodos`, `Preco_m2` e `Total_Dependencias`, mas nenhuma das três está no `dataset_treino_olx_final.csv` versionado (127 colunas) nem nas 121 do modelo. O CSV foi gerado por uma versão anterior do módulo. `Preco_m2` é vazamento e deve continuar fora; as outras duas se perderam sem querer | Feature engineering inteira inerte | `prepare_dataset.py` |
 | P27 | **A cadeia bruta da OLX não existe mais.** `raw_olx.csv`, `enriched_geo_olx.csv` e `enriched_economic_olx.csv` sumiram; só sobrou `dataset_treino_olx_final.csv`, já preparado e sem `Tipo_Negocio`/`Tipo_Imovel`. O filtro de aluguel adicionado ao `prepare_dataset.py` é **inócuo** para esse CSV e o P23/P24 não têm como ser corrigidos sem recoletar | Dataset principal é um beco sem saída | `data/` |
-| P10 | 10 avisos de a11y (`useValidAnchor`) — links placeholder `href="#"` no rodapé | `make web-check` falha | `Footer.jsx`, `Header.jsx` |
 | P11 | Distâncias a POIs medem distância a 1 ponto fixo por categoria (provado: erro máx. 0,005 m contra a geodésica). São coordenadas polares, não acesso a serviços; a ablação mostra que toda a geo contínua vale 1,6pp de R² | Feature geoespacial ilusória | `enriquecimento_geoespacial.py` |
 | P18 | Viés por faixa: +28% abaixo de R$250k, −27% acima de R$1,2M (regressão à média) | Inútil nos extremos | `train_model.py` |
 | P19 | Módulo IBGE existe e mede corr(renda_setor, preço/m²)=0,58, mas não está ligado ao modelo principal | Melhor sinal de localização desperdiçado | `enriquecimento_ibge.py` |
 | P12 | Fatores FipeZap por bairro hardcoded | Dado estático | `enriquecimento_economico.py` |
+
+### Resolvidos em 2026-11-01
+
+| # | Problema | Solução |
+|---|---|---|
+| P10 | Links `href="#"` no rodapé e `href="/#faq"` no menu (404 no GitHub Pages) | Páginas `/como-funciona` e `/faq`; rodapé e menu com `<Link>`; `make web-check` passa |
 
 ### Resolvidos em 2026-08-11
 

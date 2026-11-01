@@ -8,14 +8,21 @@ O intervalo é conformal em log: a meia-largura de cada faixa de preço previsto
 |resíduos| fora da amostra (CV agrupada por `ID_Grupo`) dos anúncios cuja previsão caiu na faixa.
 Uma largura global cobre o conjunto mas sub-cobre o terço caro.
 
+O artefato leva também o `diagnostico` do site (previsto × pedido e viés por faixa de preço), feito
+com as mesmas previsões fora da amostra da calibração: mostra o comportamento do modelo sem reabrir
+o teste. Com `--abrir-teste`, as métricas vão para `metricas_teste.json` junto com a impressão
+digital do modelo medido; `export_web` recusa publicar métricas de outro modelo.
+
 Uso: uv run python -m ml.pipeline.treino_final [--abrir-teste]
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -30,6 +37,7 @@ from ml.experiments.renda_ibge import X_com, com_ibge
 SEED = 42
 NIVEL = 0.8
 FAIXAS = 3
+METRICAS_TESTE = Path(__file__).with_name("metricas_teste.json")
 
 
 @dataclass
@@ -53,16 +61,61 @@ def novo_modelo(semente: int = SEED) -> GradientBoostingRegressor:
     )
 
 
-def calibrar(X: pd.DataFrame, y_log: np.ndarray, grupos: pd.Series) -> Intervalos:
+def fora_da_amostra(X: pd.DataFrame, y_log: np.ndarray, grupos: pd.Series) -> np.ndarray:
+    """Log-preço previsto por um modelo que não viu o anúncio nem o seu grupo (CV agrupada)."""
     oof = np.zeros(len(X))
     for a, b in GroupKFold(n_splits=5).split(X, y_log, grupos):
         oof[b] = novo_modelo().fit(X.iloc[a], y_log[a]).predict(X.iloc[b])
+    return oof
+
+
+def calibrar(y_log: np.ndarray, oof: np.ndarray) -> Intervalos:
     preco = np.exp(oof)
     cortes = [float(c) for c in np.quantile(preco, np.linspace(0, 1, FAIXAS + 1)[1:-1])]
     faixa = np.searchsorted(cortes, preco)
     res = np.abs(y_log - oof)
     largura = [float(np.quantile(res[faixa == k], NIVEL)) for k in range(FAIXAS)]
     return Intervalos(cortes, largura)
+
+
+def diagnostico(y: np.ndarray, pred: np.ndarray) -> dict[str, list[dict[str, float]]]:
+    """Agregados por faixa de preço pedido; nenhum anúncio individual sai daqui."""
+
+    def faixas(n: int) -> list[np.ndarray]:
+        cortes = np.quantile(y, np.linspace(0, 1, n + 1))
+        idx = np.clip(np.searchsorted(cortes, y, side="right") - 1, 0, n - 1)
+        return [idx == k for k in range(n)]
+
+    calibracao = [
+        {
+            "pedido": float(np.median(y[m])),
+            "previsto": float(np.median(pred[m])),
+            "previsto_p10": float(np.quantile(pred[m], 0.1)),
+            "previsto_p90": float(np.quantile(pred[m], 0.9)),
+            "n": int(m.sum()),
+        }
+        for m in faixas(10)
+    ]
+    vies = [
+        {
+            "de": float(y[m].min()),
+            "ate": float(y[m].max()),
+            "vies": float(np.median(pred[m] / y[m] - 1)),
+            "erro": float(np.median(np.abs(pred[m] / y[m] - 1))),
+            "n": int(m.sum()),
+        }
+        for m in faixas(5)
+    ]
+    return {"calibracao": calibracao, "vies": vies}
+
+
+def impressao(modelo: GradientBoostingRegressor, colunas: list[str]) -> str:
+    """Identifica o modelo treinado: muda se mudar uma coluna, um corte ou uma folha."""
+    h = hashlib.sha256(json.dumps(colunas).encode())
+    for arvore in modelo.estimators_[:, 0]:
+        h.update(arvore.tree_.threshold.tobytes())
+        h.update(arvore.tree_.value.tobytes())
+    return h.hexdigest()[:16]
 
 
 def avaliar(
@@ -73,6 +126,7 @@ def avaliar(
     dentro = (y >= lo) & (y <= hi)
     por_faixa = pd.Series(dentro).groupby(iv.faixa(pred)).mean()
     return {
+        "n_teste": len(y),
         "metricas": {k: round(float(v), 3) for k, v in metricas(y, pred).items()},
         "cobertura": round(float(dentro.mean()), 3),
         "cobertura_por_faixa": [round(float(v), 3) for v in por_faixa],
@@ -89,7 +143,7 @@ def treinar(negocio: str, abrir_teste: bool) -> dict[str, object]:
 
     X_tr = X_com(tr, None, True)
     y_tr = np.log(tr["Valor_Anuncio"].to_numpy())
-    iv = calibrar(X_tr, y_tr, tr["ID_Grupo"])
+    iv = calibrar(y_tr, fora_da_amostra(X_tr, y_tr, tr["ID_Grupo"]))
     m = novo_modelo().fit(X_tr, y_tr)
     X_va = X_com(va, list(X_tr.columns), True)
     saida["desenvolvimento"] = avaliar(m, iv, X_va, va["Valor_Anuncio"].to_numpy())
@@ -97,11 +151,16 @@ def treinar(negocio: str, abrir_teste: bool) -> dict[str, object]:
     pool = pd.concat([tr, va], ignore_index=True)
     X_pool = X_com(pool, None, True)
     y_pool = np.log(pool["Valor_Anuncio"].to_numpy())
-    iv_final = calibrar(X_pool, y_pool, pool["ID_Grupo"])
+    oof_pool = fora_da_amostra(X_pool, y_pool, pool["ID_Grupo"])
+    iv_final = calibrar(y_pool, oof_pool)
     modelo_final = novo_modelo().fit(X_pool, y_pool)
+    saida["modelo"] = impressao(modelo_final, list(X_pool.columns))
     if abrir_teste:
         X_te = X_com(te, list(X_pool.columns), True)
-        saida["teste"] = avaliar(modelo_final, iv_final, X_te, te["Valor_Anuncio"].to_numpy())
+        saida["teste"] = {
+            **avaliar(modelo_final, iv_final, X_te, te["Valor_Anuncio"].to_numpy()),
+            "modelo": saida["modelo"],
+        }
 
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(
@@ -110,6 +169,14 @@ def treinar(negocio: str, abrir_teste: bool) -> dict[str, object]:
             "columns": list(X_pool.columns),
             "intervalos": iv_final.__dict__,
             "contagem_bairro": {str(k): int(v) for k, v in pool["Bairro"].value_counts().items()},
+            "diagnostico": diagnostico(np.exp(y_pool), np.exp(oof_pool)),
+            "corpus": {
+                "anuncios": len(df),
+                "imoveis": int(df["ID_Grupo"].nunique()),
+                "ligados_ibge": float(df["Renda_bairro"].notna().mean()),
+                "mediana_pedido": float(pool["Valor_Anuncio"].median()),
+            },
+            "impressao": saida["modelo"],
         },
         ARTIFACT_DIR / f"final_{negocio}.joblib",
     )
@@ -123,6 +190,10 @@ def main() -> None:
     args = parser.parse_args()
     resultado = {n: treinar(n, args.abrir_teste) for n in ("venda", "aluguel")}
     print(json.dumps(resultado, indent=2, ensure_ascii=False))
+    if args.abrir_teste:
+        teste = {n: r["teste"] for n, r in resultado.items()}
+        METRICAS_TESTE.write_text(json.dumps(teste, indent=2, ensure_ascii=False) + "\n", "utf-8")
+        print(f"[OK] {METRICAS_TESTE.name} gravado. Não abra o teste de novo para este split.")
 
 
 if __name__ == "__main__":

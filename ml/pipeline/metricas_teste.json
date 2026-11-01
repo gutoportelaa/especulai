@@ -14,7 +14,8 @@
       0.84,
       0.819
     ],
-    "razao_media_hi_lo": 2.28
+    "razao_media_hi_lo": 2.28,
+    "modelo": "23df79c0cbabe456"
   },
   "aluguel": {
     "n_teste": 276,
@@ -31,6 +32,7 @@
       0.757,
       0.8
     ],
-    "razao_media_hi_lo": 2.61
+    "razao_media_hi_lo": 2.61,
+    "modelo": "6ffb208be69294bb"
   }
 }

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="330" viewBox="0 0 820 330" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif">
+<!-- gerado por ml/pipeline/graficos_readme.py; modelos venda=23df79c0cbabe456, aluguel=6ffb208be69294bb -->
+<title>O que pesa na estimativa</title>
+<rect width="820" height="330" rx="12" fill="#ffffff"/>
+<text x="20" y="34" font-size="18" fill="#09090b" text-anchor="start" font-weight="700">O que pesa na estimativa</text>
+<text x="20" y="56" font-size="12" fill="#71717a" text-anchor="start">Redução de erro nas árvores, por informação; bairros e tipos somados. Uso, não causa.</text>
+<text x="20" y="86" font-size="13" fill="#09090b" text-anchor="start" font-weight="600">Venda</text>
+<text x="20" y="110" font-size="12" fill="#71717a" text-anchor="start">Área</text>
+<rect x="190" y="100" width="161" height="12" rx="3" fill="#044bd9"/>
+<text x="357" y="110" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">57%</text>
+<text x="20" y="138" font-size="12" fill="#71717a" text-anchor="start">Banheiros</text>
+<rect x="190" y="128" width="39.1" height="12" rx="3" fill="#044bd9"/>
+<text x="235.1" y="138" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">14%</text>
+<text x="20" y="166" font-size="12" fill="#71717a" text-anchor="start">Renda do bairro (IBGE)</text>
+<rect x="190" y="156" width="38" height="12" rx="3" fill="#044bd9"/>
+<text x="234" y="166" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">14%</text>
+<text x="20" y="194" font-size="12" fill="#71717a" text-anchor="start">Bairro</text>
+<rect x="190" y="184" width="12.2" height="12" rx="3" fill="#044bd9"/>
+<text x="208.2" y="194" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">4%</text>
+<text x="20" y="222" font-size="12" fill="#71717a" text-anchor="start">Tipo do imóvel</text>
+<rect x="190" y="212" width="11.3" height="12" rx="3" fill="#044bd9"/>
+<text x="207.3" y="222" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">4%</text>
+<text x="20" y="250" font-size="12" fill="#71717a" text-anchor="start">Vagas</text>
+<rect x="190" y="240" width="10.1" height="12" rx="3" fill="#044bd9"/>
+<text x="206.1" y="250" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">4%</text>
+<text x="20" y="278" font-size="12" fill="#71717a" text-anchor="start">Quartos</text>
+<rect x="190" y="268" width="6.6" height="12" rx="3" fill="#044bd9"/>
+<text x="202.6" y="278" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">2%</text>
+<text x="20" y="306" font-size="12" fill="#71717a" text-anchor="start">Densidade do bairro (IBGE)</text>
+<rect x="190" y="296" width="2.4" height="12" rx="3" fill="#044bd9"/>
+<text x="198.4" y="306" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">1%</text>
+<text x="425" y="86" font-size="13" fill="#09090b" text-anchor="start" font-weight="600">Aluguel</text>
+<text x="425" y="110" font-size="12" fill="#71717a" text-anchor="start">Área</text>
+<rect x="595" y="100" width="161" height="12" rx="3" fill="#044bd9"/>
+<text x="762" y="110" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">54%</text>
+<text x="425" y="138" font-size="12" fill="#71717a" text-anchor="start">Renda do bairro (IBGE)</text>
+<rect x="595" y="128" width="67.4" height="12" rx="3" fill="#044bd9"/>
+<text x="668.4" y="138" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">23%</text>
+<text x="425" y="166" font-size="12" fill="#71717a" text-anchor="start">Bairro</text>
+<rect x="595" y="156" width="22" height="12" rx="3" fill="#044bd9"/>
+<text x="623" y="166" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">7%</text>
+<text x="425" y="194" font-size="12" fill="#71717a" text-anchor="start">Banheiros</text>
+<rect x="595" y="184" width="15.5" height="12" rx="3" fill="#044bd9"/>
+<text x="616.5" y="194" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">5%</text>
+<text x="425" y="222" font-size="12" fill="#71717a" text-anchor="start">Quartos</text>
+<rect x="595" y="212" width="10.1" height="12" rx="3" fill="#044bd9"/>
+<text x="611.1" y="222" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">3%</text>
+<text x="425" y="250" font-size="12" fill="#71717a" text-anchor="start">Vagas</text>
+<rect x="595" y="240" width="9.3" height="12" rx="3" fill="#044bd9"/>
+<text x="610.3" y="250" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">3%</text>
+<text x="425" y="278" font-size="12" fill="#71717a" text-anchor="start">Densidade do bairro (IBGE)</text>
+<rect x="595" y="268" width="7.2" height="12" rx="3" fill="#044bd9"/>
+<text x="608.2" y="278" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">2%</text>
+<text x="425" y="306" font-size="12" fill="#71717a" text-anchor="start">Tipo do imóvel</text>
+<rect x="595" y="296" width="6.6" height="12" rx="3" fill="#044bd9"/>
+<text x="607.6" y="306" font-size="12" fill="#09090b" text-anchor="start" font-weight="600">2%</text>
+</svg>

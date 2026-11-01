@@ -1,5 +1,41 @@
+import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoEspeculai from "../../assets/solo_logo_Especulai.png";
+import { RELATORIO_URL, REPO_URL } from "../../features/conteudo/metodologia";
+
+// `to` vira Link do router (respeita o basename); `href` é link externo.
+const COLUNAS = [
+	{
+		titulo: "Produto",
+		links: [
+			{ rotulo: "Recursos", to: { pathname: "/", hash: "#features" } },
+			{ rotulo: "Estimar preço", to: "/predict" },
+			{ rotulo: "Como Funciona", to: "/como-funciona" },
+		],
+	},
+	{
+		titulo: "Saiba mais",
+		links: [
+			{ rotulo: "FAQ", to: "/faq" },
+			{
+				rotulo: "Resultados do modelo",
+				to: { pathname: "/como-funciona", hash: "#resultados" },
+			},
+			{ rotulo: "Relatório completo", href: RELATORIO_URL },
+		],
+	},
+	{
+		titulo: "Projeto",
+		links: [
+			{ rotulo: "Privacidade", to: { pathname: "/faq", hash: "#privacidade" } },
+			{ rotulo: "Código-fonte", href: REPO_URL },
+			{ rotulo: "Relatar um problema", href: `${REPO_URL}/issues` },
+		],
+	},
+];
+
+const CLASSE_LINK =
+	"inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors";
 
 export function Footer() {
 	return (
@@ -17,116 +53,45 @@ export function Footer() {
 						</p>
 					</div>
 
-					<div className="space-y-4">
-						<h4 className="text-sm font-bold">Produto</h4>
-						<ul className="space-y-2 text-sm">
-							<li>
-								<a
-									href="/#features"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Recursos
-								</a>
-							</li>
-							<li>
-								<Link
-									to="/predict"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Predição
-								</Link>
-							</li>
-							<li>
-								<a
-									href="/#como-funciona"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Como Funciona
-								</a>
-							</li>
-						</ul>
-					</div>
-
-					<div className="space-y-4">
-						<h4 className="text-sm font-bold">Recursos</h4>
-						<ul className="space-y-2 text-sm">
-							<li>
-								<a
-									href="/#faq"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									FAQ
-								</a>
-							</li>
-							<li>
-								<a
-									href="#"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Documentação
-								</a>
-							</li>
-							<li>
-								<a
-									href="#"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Suporte
-								</a>
-							</li>
-						</ul>
-					</div>
-
-					<div className="space-y-4">
-						<h4 className="text-sm font-bold">Empresa</h4>
-						<ul className="space-y-2 text-sm">
-							<li>
-								<a
-									href="#"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Sobre
-								</a>
-							</li>
-							<li>
-								<a
-									href="#"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Privacidade
-								</a>
-							</li>
-							<li>
-								<a
-									href="#"
-									className="text-muted-foreground hover:text-foreground transition-colors"
-								>
-									Termos de Serviço
-								</a>
-							</li>
-						</ul>
-					</div>
+					{COLUNAS.map((coluna) => (
+						<div key={coluna.titulo} className="space-y-4">
+							<h4 className="text-sm font-bold">{coluna.titulo}</h4>
+							<ul className="space-y-2 text-sm">
+								{coluna.links.map((link) => (
+									<li key={link.rotulo}>
+										{link.to ? (
+											<Link to={link.to} className={CLASSE_LINK}>
+												{link.rotulo}
+											</Link>
+										) : (
+											<a
+												href={link.href}
+												target="_blank"
+												rel="noreferrer"
+												className={CLASSE_LINK}
+											>
+												{link.rotulo}
+												<ArrowUpRight className="size-3" />
+											</a>
+										)}
+									</li>
+								))}
+							</ul>
+						</div>
+					))}
 				</div>
 
 				<div className="flex flex-col gap-4 sm:flex-row justify-between items-center border-t border-border/40 pt-8">
 					<p className="text-xs text-muted-foreground">
-						&copy; {new Date().getFullYear()} Especulai. Todos os direitos
-						reservados.
+						&copy; {new Date().getFullYear()} Especulai. Estimativa de preço
+						pedido, não avaliação imobiliária.
 					</p>
-					<div className="flex gap-4">
-						<a
-							href="#"
-							className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-						>
-							Privacidade
-						</a>
-						<a
-							href="#"
-							className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-						>
-							Termos de Serviço
-						</a>
-					</div>
+					<Link
+						to={{ pathname: "/como-funciona", hash: "#limitacoes" }}
+						className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+					>
+						Limitações do modelo
+					</Link>
 				</div>
 			</div>
 		</footer>

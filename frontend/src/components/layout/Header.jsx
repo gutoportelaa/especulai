@@ -6,6 +6,14 @@ import { useMobileMenu } from "../../hooks/useMobileMenu";
 import { useScroll } from "../../hooks/useScroll";
 import { Button } from "../ui/button";
 
+// Link do router, e não <a href="/#...">: o href cru ignora o basename e, no GitHub Pages,
+// mandava para a raiz do domínio (404).
+const NAV = [
+	{ to: { pathname: "/", hash: "#features" }, rotulo: "Recursos" },
+	{ to: "/como-funciona", rotulo: "Como Funciona" },
+	{ to: "/faq", rotulo: "FAQ" },
+];
+
 export function Header() {
 	const isScrolled = useScroll();
 	const { mobileMenuOpen, toggleMenu, closeMenu } = useMobileMenu();
@@ -23,24 +31,15 @@ export function Header() {
 				</Link>
 
 				<nav className="hidden md:flex gap-8">
-					<a
-						href="/#features"
-						className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-					>
-						Recursos
-					</a>
-					<a
-						href="/#como-funciona"
-						className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-					>
-						Como Funciona
-					</a>
-					<a
-						href="/#faq"
-						className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-					>
-						FAQ
-					</a>
+					{NAV.map((item) => (
+						<Link
+							key={item.rotulo}
+							to={item.to}
+							className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+						>
+							{item.rotulo}
+						</Link>
+					))}
 				</nav>
 
 				<div className="hidden md:flex gap-4 items-center">
@@ -76,27 +75,16 @@ export function Header() {
 						className="md:hidden absolute top-16 inset-x-0 bg-background/95 backdrop-blur-lg border-b"
 					>
 						<div className="container py-4 flex flex-col gap-4">
-							<a
-								href="/#features"
-								className="py-2 text-sm font-medium"
-								onClick={closeMenu}
-							>
-								Recursos
-							</a>
-							<a
-								href="/#como-funciona"
-								className="py-2 text-sm font-medium"
-								onClick={closeMenu}
-							>
-								Como Funciona
-							</a>
-							<a
-								href="/#faq"
-								className="py-2 text-sm font-medium"
-								onClick={closeMenu}
-							>
-								FAQ
-							</a>
+							{NAV.map((item) => (
+								<Link
+									key={item.rotulo}
+									to={item.to}
+									className="py-2 text-sm font-medium"
+									onClick={closeMenu}
+								>
+									{item.rotulo}
+								</Link>
+							))}
 							<div className="flex flex-col gap-2 pt-2 border-t">
 								<Link to="/predict" onClick={closeMenu}>
 									<Button className="rounded-full w-full">

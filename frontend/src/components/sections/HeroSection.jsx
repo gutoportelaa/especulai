@@ -37,13 +37,15 @@ export function HeroSection() {
 								<ArrowRight className="ml-2 size-4" />
 							</Button>
 						</Link>
-						<Button
-							size="lg"
-							variant="outline"
-							className="rounded-full h-12 px-8 text-base"
-						>
-							Saiba Mais
-						</Button>
+						<Link to="/como-funciona">
+							<Button
+								size="lg"
+								variant="outline"
+								className="rounded-full h-12 px-8 text-base"
+							>
+								Como Funciona
+							</Button>
+						</Link>
 					</div>
 					<div className="flex items-center justify-center gap-4 mt-6 text-sm text-muted-foreground flex-wrap">
 						<div className="flex items-center gap-1">

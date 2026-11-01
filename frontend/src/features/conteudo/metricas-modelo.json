@@ -1,0 +1,348 @@
+{
+  "venda": {
+    "modelo": "23df79c0cbabe456",
+    "corpus": {
+      "anuncios": 5945,
+      "imoveis": 4482,
+      "ligados_ibge": 0.995
+    },
+    "teste": {
+      "n_teste": 887,
+      "metricas": {
+        "R2": 0.764,
+        "R2_log": 0.832,
+        "MdAPE%": 21.06,
+        "dentro10%": 26.832,
+        "dentro20%": 48.591
+      },
+      "cobertura": 0.814,
+      "cobertura_por_faixa": [
+        0.78,
+        0.84,
+        0.819
+      ],
+      "razao_media_hi_lo": 2.28
+    },
+    "exemplo_faixa": {
+      "central": 450000,
+      "minimo": 291000,
+      "maximo": 696000
+    },
+    "importancia": [
+      {
+        "atributo": "Área",
+        "peso": 0.5734
+      },
+      {
+        "atributo": "Banheiros",
+        "peso": 0.1394
+      },
+      {
+        "atributo": "Renda do bairro (IBGE)",
+        "peso": 0.1352
+      },
+      {
+        "atributo": "Bairro",
+        "peso": 0.0434
+      },
+      {
+        "atributo": "Tipo do imóvel",
+        "peso": 0.0403
+      },
+      {
+        "atributo": "Vagas",
+        "peso": 0.0361
+      },
+      {
+        "atributo": "Quartos",
+        "peso": 0.0236
+      },
+      {
+        "atributo": "Densidade do bairro (IBGE)",
+        "peso": 0.0086
+      }
+    ],
+    "calibracao": [
+      {
+        "pedido": 160000,
+        "previsto": 188602,
+        "previsto_p10": 154677,
+        "previsto_p90": 277357,
+        "n": 496
+      },
+      {
+        "pedido": 220000,
+        "previsto": 235013,
+        "previsto_p10": 173863,
+        "previsto_p90": 361135,
+        "n": 516
+      },
+      {
+        "pedido": 270000,
+        "previsto": 292158,
+        "previsto_p10": 206089,
+        "previsto_p90": 430954,
+        "n": 502
+      },
+      {
+        "pedido": 330000,
+        "previsto": 344609,
+        "previsto_p10": 259154,
+        "previsto_p90": 528462,
+        "n": 509
+      },
+      {
+        "pedido": 400000,
+        "previsto": 383782,
+        "previsto_p10": 293009,
+        "previsto_p90": 546929,
+        "n": 455
+      },
+      {
+        "pedido": 500000,
+        "previsto": 468115,
+        "previsto_p10": 346035,
+        "previsto_p90": 747447,
+        "n": 537
+      },
+      {
+        "pedido": 680000,
+        "previsto": 643520,
+        "previsto_p10": 424391,
+        "previsto_p90": 1006917,
+        "n": 525
+      },
+      {
+        "pedido": 850000,
+        "previsto": 825783,
+        "previsto_p10": 539630,
+        "previsto_p90": 1216096,
+        "n": 493
+      },
+      {
+        "pedido": 1300000,
+        "previsto": 1115694,
+        "previsto_p10": 737481,
+        "previsto_p90": 1712016,
+        "n": 515
+      },
+      {
+        "pedido": 2000000,
+        "previsto": 1792238,
+        "previsto_p10": 1110392,
+        "previsto_p90": 2885121,
+        "n": 510
+      }
+    ],
+    "vies": [
+      {
+        "de": 60000,
+        "ate": 249640,
+        "vies": 0.173,
+        "erro": 0.196,
+        "n": 1012
+      },
+      {
+        "de": 250000,
+        "ate": 367295,
+        "vies": 0.069,
+        "erro": 0.186,
+        "n": 1011
+      },
+      {
+        "de": 368000,
+        "ate": 599000,
+        "vies": -0.055,
+        "erro": 0.18,
+        "n": 992
+      },
+      {
+        "de": 600000,
+        "ate": 999000,
+        "vies": -0.054,
+        "erro": 0.218,
+        "n": 1018
+      },
+      {
+        "de": 1000000,
+        "ate": 8000000,
+        "vies": -0.161,
+        "erro": 0.231,
+        "n": 1025
+      }
+    ]
+  },
+  "aluguel": {
+    "modelo": "6ffb208be69294bb",
+    "corpus": {
+      "anuncios": 1898,
+      "imoveis": 1481,
+      "ligados_ibge": 0.993
+    },
+    "teste": {
+      "n_teste": 276,
+      "metricas": {
+        "R2": 0.639,
+        "R2_log": 0.622,
+        "MdAPE%": 24.443,
+        "dentro10%": 25.725,
+        "dentro20%": 42.754
+      },
+      "cobertura": 0.801,
+      "cobertura_por_faixa": [
+        0.855,
+        0.757,
+        0.8
+      ],
+      "razao_media_hi_lo": 2.61
+    },
+    "exemplo_faixa": {
+      "central": 1800,
+      "minimo": 1080,
+      "maximo": 3000
+    },
+    "importancia": [
+      {
+        "atributo": "Área",
+        "peso": 0.5382
+      },
+      {
+        "atributo": "Renda do bairro (IBGE)",
+        "peso": 0.2253
+      },
+      {
+        "atributo": "Bairro",
+        "peso": 0.0737
+      },
+      {
+        "atributo": "Banheiros",
+        "peso": 0.0518
+      },
+      {
+        "atributo": "Quartos",
+        "peso": 0.0336
+      },
+      {
+        "atributo": "Vagas",
+        "peso": 0.0311
+      },
+      {
+        "atributo": "Densidade do bairro (IBGE)",
+        "peso": 0.0241
+      },
+      {
+        "atributo": "Tipo do imóvel",
+        "peso": 0.0222
+      }
+    ],
+    "calibracao": [
+      {
+        "pedido": 700,
+        "previsto": 978,
+        "previsto_p10": 796,
+        "previsto_p90": 1427,
+        "n": 148
+      },
+      {
+        "pedido": 995,
+        "previsto": 1087,
+        "previsto_p10": 805,
+        "previsto_p90": 1647,
+        "n": 162
+      },
+      {
+        "pedido": 1200,
+        "previsto": 1322,
+        "previsto_p10": 943,
+        "previsto_p90": 2064,
+        "n": 176
+      },
+      {
+        "pedido": 1300,
+        "previsto": 1450,
+        "previsto_p10": 1007,
+        "previsto_p90": 2136,
+        "n": 127
+      },
+      {
+        "pedido": 1600,
+        "previsto": 1714,
+        "previsto_p10": 1106,
+        "previsto_p90": 2421,
+        "n": 191
+      },
+      {
+        "pedido": 2000,
+        "previsto": 1919,
+        "previsto_p10": 1296,
+        "previsto_p90": 2879,
+        "n": 146
+      },
+      {
+        "pedido": 2499,
+        "previsto": 2132,
+        "previsto_p10": 1573,
+        "previsto_p90": 3298,
+        "n": 175
+      },
+      {
+        "pedido": 3000,
+        "previsto": 2318,
+        "previsto_p10": 1697,
+        "previsto_p90": 3991,
+        "n": 166
+      },
+      {
+        "pedido": 4500,
+        "previsto": 3381,
+        "previsto_p10": 2064,
+        "previsto_p90": 6359,
+        "n": 168
+      },
+      {
+        "pedido": 8000,
+        "previsto": 6535,
+        "previsto_p10": 3787,
+        "previsto_p90": 10558,
+        "n": 163
+      }
+    ],
+    "vies": [
+      {
+        "de": 450,
+        "ate": 1075,
+        "vies": 0.259,
+        "erro": 0.265,
+        "n": 310
+      },
+      {
+        "de": 1100,
+        "ate": 1499,
+        "vies": 0.1,
+        "erro": 0.213,
+        "n": 303
+      },
+      {
+        "de": 1500,
+        "ate": 2150,
+        "vies": 0.048,
+        "erro": 0.201,
+        "n": 337
+      },
+      {
+        "de": 2200,
+        "ate": 3599,
+        "vies": -0.167,
+        "erro": 0.252,
+        "n": 341
+      },
+      {
+        "de": 3600,
+        "ate": 25000,
+        "vies": -0.198,
+        "erro": 0.289,
+        "n": 331
+      }
+    ]
+  }
+}

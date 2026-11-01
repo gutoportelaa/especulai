@@ -39,6 +39,9 @@ aquele bairro.
 
 ## Resultados (teste, aberto uma única vez)
 
+<!-- resultados:inicio -->
+<!-- gerado por ml/pipeline/graficos_readme.py a partir do modelo publicado -->
+
 | | Venda (887 anúncios) | Aluguel (276 anúncios) |
 |---|---:|---:|
 | R² em log | 0,832 | 0,622 |
@@ -46,6 +49,16 @@ aquele bairro.
 | Estimativa central a ±20% do pedido | 48,6% | 42,8% |
 | Cobertura da faixa de 80% | 81,4% | 80,1% |
 | Limite superior ÷ inferior da faixa | 2,28× | 2,61× |
+
+Os gráficos usam previsões fora da amostra (validação cruzada agrupada em treino e
+validação), sem reabrir o teste. A mesma fonte alimenta a página Como Funciona do site.
+
+<p align="center">
+  <img alt="Previsto contra pedido por faixa de preço" src="docs/graficos/previsto-pedido.svg" width="100%">
+  <img alt="Viés por faixa de preço" src="docs/graficos/vies-por-faixa.svg" width="100%">
+  <img alt="Importância de cada informação" src="docs/graficos/importancia.svg" width="100%">
+</p>
+<!-- resultados:fim -->
 
 Menos da metade dos anúncios cai a ±20% da estimativa central, e por isso o produto é a faixa.
 A largura é calibrada por terço de preço previsto: uma largura única cobria bem no total, mas

@@ -3,7 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/button";
 
-export function CTASection() {
+export function CTASection({
+	secundario = { to: "/como-funciona", rotulo: "Saiba Mais" },
+}) {
 	return (
 		<section className="w-full py-20 md:py-32 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground relative overflow-hidden">
 			<div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-[size:4rem_4rem]" />
@@ -36,15 +38,16 @@ export function CTASection() {
 								<ArrowRight className="ml-2 size-4" />
 							</Button>
 						</Link>
-						<Button
-							size="lg"
-							variant="outline"
-							className="rounded-full h-12 px-8 text-base bg-transparent border-white text-white hover:bg-white/10"
-						>
-							Saiba Mais
-						</Button>
+						<Link to={secundario.to}>
+							<Button
+								size="lg"
+								variant="outline"
+								className="rounded-full h-12 px-8 text-base bg-transparent border-white text-white hover:bg-white/10"
+							>
+								{secundario.rotulo}
+							</Button>
+						</Link>
 					</div>
-					<p className="text-sm text-primary-foreground/80 mt-4" />
 				</motion.div>
 			</div>
 		</section>

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="382" viewBox="0 0 820 382" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif">
+<!-- gerado por ml/pipeline/graficos_readme.py; modelos venda=23df79c0cbabe456, aluguel=6ffb208be69294bb -->
+<title>Viés por faixa de preço pedido</title>
+<rect width="820" height="382" rx="12" fill="#ffffff"/>
+<text x="20" y="34" font-size="18" fill="#09090b" text-anchor="start" font-weight="700">Viés por faixa de preço pedido</text>
+<text x="20" y="56" font-size="12" fill="#71717a" text-anchor="start">Mediana de previsto ÷ pedido − 1, em 5 faixas com o mesmo número de anúncios.</text>
+<rect x="20" y="72" width="10" height="10" rx="2" fill="#044bd9"/>
+<text x="36" y="81" font-size="12" fill="#71717a" text-anchor="start">previsto acima do pedido</text>
+<rect x="210" y="72" width="10" height="10" rx="2" fill="#d03b3b"/>
+<text x="226" y="81" font-size="12" fill="#71717a" text-anchor="start">previsto abaixo do pedido</text>
+<text x="20" y="106" font-size="13" fill="#09090b" text-anchor="start" font-weight="600">Venda (R$)</text>
+<line x1="64" y1="328" x2="387" y2="328" stroke="#ececef" stroke-width="1"/>
+<text x="58" y="332" font-size="11" fill="#71717a" text-anchor="end">−30%</text>
+<line x1="64" y1="278" x2="387" y2="278" stroke="#ececef" stroke-width="1"/>
+<text x="58" y="282" font-size="11" fill="#71717a" text-anchor="end">−15%</text>
+<line x1="64" y1="228" x2="387" y2="228" stroke="#a1a1aa" stroke-width="1"/>
+<text x="58" y="232" font-size="11" fill="#71717a" text-anchor="end">0%</text>
+<line x1="64" y1="178" x2="387" y2="178" stroke="#ececef" stroke-width="1"/>
+<text x="58" y="182" font-size="11" fill="#71717a" text-anchor="end">+15%</text>
+<line x1="64" y1="128" x2="387" y2="128" stroke="#ececef" stroke-width="1"/>
+<text x="58" y="132" font-size="11" fill="#71717a" text-anchor="end">+30%</text>
+<path d="M84.3,228 V174.3 Q84.3,170.3 88.3,170.3 H104.3 Q108.3,170.3 108.3,174.3 V228 Z" fill="#044bd9"/>
+<text x="96.3" y="164.3" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">+17%</text>
+<text x="96.3" y="344" font-size="11" fill="#71717a" text-anchor="middle">até</text>
+<text x="96.3" y="357" font-size="11" fill="#71717a" text-anchor="middle">250 mil</text>
+<path d="M148.9,228 V209 Q148.9,205 152.9,205 H168.9 Q172.9,205 172.9,209 V228 Z" fill="#044bd9"/>
+<text x="160.9" y="199" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">+7%</text>
+<text x="160.9" y="344" font-size="11" fill="#71717a" text-anchor="middle">250 mil</text>
+<text x="160.9" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 367 mil</text>
+<path d="M213.5,228 V242.3 Q213.5,246.3 217.5,246.3 H233.5 Q237.5,246.3 237.5,242.3 V228 Z" fill="#d03b3b"/>
+<text x="225.5" y="260.3" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">−6%</text>
+<text x="225.5" y="344" font-size="11" fill="#71717a" text-anchor="middle">368 mil</text>
+<text x="225.5" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 599 mil</text>
+<path d="M278.1,228 V242 Q278.1,246 282.1,246 H298.1 Q302.1,246 302.1,242 V228 Z" fill="#d03b3b"/>
+<text x="290.1" y="260" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">−5%</text>
+<text x="290.1" y="344" font-size="11" fill="#71717a" text-anchor="middle">600 mil</text>
+<text x="290.1" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 999 mil</text>
+<path d="M342.7,228 V277.7 Q342.7,281.7 346.7,281.7 H362.7 Q366.7,281.7 366.7,277.7 V228 Z" fill="#d03b3b"/>
+<text x="354.7" y="295.7" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">−16%</text>
+<text x="354.7" y="344" font-size="11" fill="#71717a" text-anchor="middle">acima de</text>
+<text x="354.7" y="357" font-size="11" fill="#71717a" text-anchor="middle">1 mi</text>
+<text x="425" y="106" font-size="13" fill="#09090b" text-anchor="start" font-weight="600">Aluguel (R$/mês)</text>
+<line x1="469" y1="328" x2="792" y2="328" stroke="#ececef" stroke-width="1"/>
+<text x="463" y="332" font-size="11" fill="#71717a" text-anchor="end">−40%</text>
+<line x1="469" y1="278" x2="792" y2="278" stroke="#ececef" stroke-width="1"/>
+<text x="463" y="282" font-size="11" fill="#71717a" text-anchor="end">−20%</text>
+<line x1="469" y1="228" x2="792" y2="228" stroke="#a1a1aa" stroke-width="1"/>
+<text x="463" y="232" font-size="11" fill="#71717a" text-anchor="end">0%</text>
+<line x1="469" y1="178" x2="792" y2="178" stroke="#ececef" stroke-width="1"/>
+<text x="463" y="182" font-size="11" fill="#71717a" text-anchor="end">+20%</text>
+<line x1="469" y1="128" x2="792" y2="128" stroke="#ececef" stroke-width="1"/>
+<text x="463" y="132" font-size="11" fill="#71717a" text-anchor="end">+40%</text>
+<path d="M489.3,228 V167.2 Q489.3,163.2 493.3,163.2 H509.3 Q513.3,163.2 513.3,167.2 V228 Z" fill="#044bd9"/>
+<text x="501.3" y="157.2" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">+26%</text>
+<text x="501.3" y="344" font-size="11" fill="#71717a" text-anchor="middle">até</text>
+<text x="501.3" y="357" font-size="11" fill="#71717a" text-anchor="middle">1.075</text>
+<path d="M553.9,228 V207 Q553.9,203 557.9,203 H573.9 Q577.9,203 577.9,207 V228 Z" fill="#044bd9"/>
+<text x="565.9" y="197" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">+10%</text>
+<text x="565.9" y="344" font-size="11" fill="#71717a" text-anchor="middle">1.100</text>
+<text x="565.9" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 1.499</text>
+<path d="M618.5,228 V220 Q618.5,216 622.5,216 H638.5 Q642.5,216 642.5,220 V228 Z" fill="#044bd9"/>
+<text x="630.5" y="210" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">+5%</text>
+<text x="630.5" y="344" font-size="11" fill="#71717a" text-anchor="middle">1.500</text>
+<text x="630.5" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 2.150</text>
+<path d="M683.1,228 V265.8 Q683.1,269.8 687.1,269.8 H703.1 Q707.1,269.8 707.1,265.8 V228 Z" fill="#d03b3b"/>
+<text x="695.1" y="283.8" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">−17%</text>
+<text x="695.1" y="344" font-size="11" fill="#71717a" text-anchor="middle">2.200</text>
+<text x="695.1" y="357" font-size="11" fill="#71717a" text-anchor="middle">a 3.599</text>
+<path d="M747.7,228 V273.5 Q747.7,277.5 751.7,277.5 H767.7 Q771.7,277.5 771.7,273.5 V228 Z" fill="#d03b3b"/>
+<text x="759.7" y="291.5" font-size="12" fill="#09090b" text-anchor="middle" font-weight="600">−20%</text>
+<text x="759.7" y="344" font-size="11" fill="#71717a" text-anchor="middle">acima de</text>
+<text x="759.7" y="357" font-size="11" fill="#71717a" text-anchor="middle">3.600</text>
+</svg>
