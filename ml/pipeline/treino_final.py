@@ -10,7 +10,7 @@ Uma largura global cobre o conjunto mas sub-cobre o terço caro.
 
 O artefato leva também o `diagnostico` do site (previsto × pedido e viés por faixa de preço), feito
 com as mesmas previsões fora da amostra da calibração: mostra o comportamento do modelo sem reabrir
-o teste. Com `--abrir-teste`, as métricas vão para `metricas_teste.json` junto com a impressão
+o teste, e os agregados `por_bairro` do mapa do site. Com `--abrir-teste`, as métricas vão para `metricas_teste.json` junto com a impressão
 digital do modelo medido; `export_web` recusa publicar métricas de outro modelo.
 
 Uso: uv run python -m ml.pipeline.treino_final [--abrir-teste]
@@ -32,12 +32,17 @@ from sklearn.model_selection import GroupKFold
 
 from config.paths import ARTIFACT_DIR
 from ml.experiments.baseline_atributos import carregar, metricas
-from ml.experiments.renda_ibge import X_com, com_ibge
+from ml.experiments.renda_ibge import X_com, _chave, com_ibge
 
 SEED = 42
 NIVEL = 0.8
 FAIXAS = 3
 METRICAS_TESTE = Path(__file__).with_name("metricas_teste.json")
+# Imóveis distintos que um bairro precisa ter para ganhar número no mapa do site, e para ceder
+# exemplos de anúncio (descritos, arredondados no export). Abaixo disso, só a contagem.
+MIN_AGREGADO = 5
+MIN_EXEMPLO = 15
+EXEMPLOS_POR_BAIRRO = 2
 
 
 @dataclass
@@ -109,6 +114,55 @@ def diagnostico(y: np.ndarray, pred: np.ndarray) -> dict[str, list[dict[str, flo
     return {"calibracao": calibracao, "vies": vies}
 
 
+def por_bairro(
+    pool: pd.DataFrame, oof_log: np.ndarray, iv: Intervalos
+) -> dict[str, dict[str, object]]:
+    """Agregados fora da amostra por bairro (chave do IBGE, sem acento nem caixa).
+
+    Os exemplos são sorteados, não escolhidos: entram anúncios que a faixa erra, na proporção em
+    que ela erra. Saem daqui com valores exatos; o export arredonda antes de publicar.
+    """
+    y = pool["Valor_Anuncio"].to_numpy()
+    pred = np.exp(oof_log)
+    lo, hi = iv.limites(pred)
+    df = pool.assign(
+        _chave=pool["Bairro"].map(_chave),
+        _pred=pred,
+        _lo=lo,
+        _hi=hi,
+        _razao=pred / y - 1,
+        _m2=y / pool["Area_m2"].to_numpy(),
+        _dentro=(y >= lo) & (y <= hi),
+    )
+    saida: dict[str, dict[str, object]] = {}
+    for chave, g in df.groupby("_chave", sort=True):
+        imoveis = int(g["ID_Grupo"].nunique())
+        item: dict[str, object] = {"anuncios": len(g), "imoveis": imoveis}
+        if imoveis >= MIN_AGREGADO:
+            item |= {
+                "m2": float(g["_m2"].median()),
+                "erro": float(g["_razao"].abs().median()),
+                "vies": float(g["_razao"].median()),
+                "cobertura": float(g["_dentro"].mean()),
+            }
+        if imoveis >= MIN_EXEMPLO:
+            sorteio = g.drop_duplicates("ID_Grupo").sample(EXEMPLOS_POR_BAIRRO, random_state=SEED)
+            item["exemplos"] = [
+                {
+                    "tipo": str(r["Tipo_Imovel"]),
+                    "area": float(r["Area_m2"]),
+                    "quartos": None if pd.isna(r["Quartos"]) else int(r["Quartos"]),
+                    "pedido": float(r["Valor_Anuncio"]),
+                    "previsto": float(r["_pred"]),
+                    "minimo": float(r["_lo"]),
+                    "maximo": float(r["_hi"]),
+                }
+                for _, r in sorteio.iterrows()
+            ]
+        saida[str(chave)] = item
+    return saida
+
+
 def impressao(modelo: GradientBoostingRegressor, colunas: list[str]) -> str:
     """Identifica o modelo treinado: muda se mudar uma coluna, um corte ou uma folha."""
     h = hashlib.sha256(json.dumps(colunas).encode())
@@ -170,6 +224,7 @@ def treinar(negocio: str, abrir_teste: bool) -> dict[str, object]:
             "intervalos": iv_final.__dict__,
             "contagem_bairro": {str(k): int(v) for k, v in pool["Bairro"].value_counts().items()},
             "diagnostico": diagnostico(np.exp(y_pool), np.exp(oof_pool)),
+            "por_bairro": por_bairro(pool, oof_pool, iv_final),
             "corpus": {
                 "anuncios": len(df),
                 "imoveis": int(df["ID_Grupo"].nunique()),

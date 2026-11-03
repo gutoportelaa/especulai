@@ -12,9 +12,28 @@ export function ScrollToHash() {
 			window.scrollTo(0, 0);
 			return;
 		}
-		document
-			.getElementById(decodeURIComponent(hash.slice(1)))
-			?.scrollIntoView({ behavior: "smooth", block: "start" });
+		const id = decodeURIComponent(hash.slice(1));
+		const rolar = (el) =>
+			el.scrollIntoView({ behavior: "smooth", block: "start" });
+		const el = document.getElementById(id);
+		if (el) {
+			rolar(el);
+			return;
+		}
+		// Seção carregada sob demanda (o mapa): ainda não está na página, espera aparecer.
+		const obs = new MutationObserver(() => {
+			const alvo = document.getElementById(id);
+			if (alvo) {
+				obs.disconnect();
+				rolar(alvo);
+			}
+		});
+		obs.observe(document.body, { childList: true, subtree: true });
+		const limite = setTimeout(() => obs.disconnect(), 5000);
+		return () => {
+			obs.disconnect();
+			clearTimeout(limite);
+		};
 	}, [pathname, hash]);
 
 	return null;

@@ -12,6 +12,7 @@ portais. Esses arquivos **não entram no git**, nem neste repositório público.
 | `data/splits/*.csv` | só `ID_Imovel`, `ID_Grupo` e a partição; sem nome, rua, CEP ou URL |
 | Modelo exportado (`especulai.json`) | parâmetros de árvores e perfis por bairro, sem anúncios |
 | Relatórios | só agregados |
+| `mapa-bairros.json` (site) | agregados por bairro só com 5+ imóveis; exemplos só com 15+, sorteados, sem rua, URL, coordenada ou anunciante, área em múltiplos de 5 m² e preço com 2 algarismos significativos (travado em `tests/test_metricas_site.py`) |
 
 O `data/dataset_treino_olx_final.csv` é anterior a esta regra e traz a URL do anúncio e
 centróides de bairro, sem nome nem rua. Fica como legado explícito na trava.

@@ -9,6 +9,7 @@ const COLUNAS = [
 		titulo: "Produto",
 		links: [
 			{ rotulo: "Recursos", to: { pathname: "/", hash: "#features" } },
+			{ rotulo: "Mapa", to: { pathname: "/", hash: "#mapa" } },
 			{ rotulo: "Estimar preço", to: "/predict" },
 			{ rotulo: "Como Funciona", to: "/como-funciona" },
 		],

@@ -19,7 +19,8 @@ apenas `frontend/public/model/bairros.json`, com os nomes dos bairros para o aut
 métricas do teste (de `metricas_teste.json`, aberto uma única vez, ver docs/relatorio-coleta.md §12),
 diagnóstico fora da amostra, importância por grupo de atributos e um exemplo de faixa. Só agregados:
 nenhum anúncio individual e nenhum peso do modelo. Do mesmo arquivo saem os gráficos e a tabela
-de resultados do README (`graficos_readme.py`).
+de resultados do README (`graficos_readme.py`), e o mapa de bairros da Home sai de
+`mapa_bairros.py`.
 `tests/test_web_export_parity.py` trava a paridade com o sklearn.
 
 Uso: uv run python -m ml.pipeline.export_web
@@ -37,7 +38,7 @@ import pandas as pd
 
 from config.paths import ARTIFACT_DIR, PROJECT_ROOT
 from ml.experiments.renda_ibge import com_ibge
-from ml.pipeline import graficos_readme
+from ml.pipeline import graficos_readme, mapa_bairros
 
 WEB_MODEL_DIR = ARTIFACT_DIR / "web"
 SITE_MODEL_DIR = PROJECT_ROOT / "frontend" / "public" / "model"
@@ -209,6 +210,7 @@ def export() -> list[Path]:
     )
     print(f"[OK] {SITE_METRICAS.relative_to(PROJECT_ROOT)}")
     graficos_readme.main(SITE_METRICAS)
+    mapa_bairros.main()
     bairros = {
         n: json.loads(c.read_text("utf-8"))["bairros"]
         for n, c in zip(NEGOCIOS, caminhos, strict=True)

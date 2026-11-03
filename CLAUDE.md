@@ -300,13 +300,14 @@ em float32 contra threshold float64 (`Math.fround` em `preverLog`).
 | Onde | Arquivo | O que garante |
 |---|---|---|
 | Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`) |
-| Python | `tests/test_metricas_site.py` | `metricas-modelo.json`, SVGs e tabela do README == modelo publicado e teste medido |
+| Python | `tests/test_metricas_site.py` | `metricas-modelo.json`, SVGs e tabela do README == modelo publicado e teste medido; `mapa-bairros.json` em dia e sem nada abaixo dos mínimos de publicação |
 | Python | `tests/test_cifrar_modelo.py` | formato do `.enc`, chave de 256 bits (600), chave errada/adulteração rejeitadas, nonce novo |
 | JS | `deploy/worker/test/inferencia.test.js` | Worker == fixtures do sklearn; abre o `.enc` feito pelo Python; rejeita chave errada |
 | JS | `deploy/worker/test/handler.test.js` | validação, 429, IP forjado, CORS, 503 genérico, falha fechada |
 | JS | `deploy/worker/test/limite.test.js` | janelas por minuto/hora/global |
 | JS | `frontend/.../utils.test.js` | normalização do payload do formulário |
 | JS | `frontend/.../escalas.test.js` | escalas e marcas dos gráficos, formatação pt-BR |
+| JS | `frontend/.../mapa.test.js` | classes por quantil e cores do mapa, desenho e imóvel padrão de todo bairro |
 
 Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, `uv run pytest tests/`
 (regera as fixtures), `make test-worker`, commite os `.enc` **e o `metricas-modelo.json`**, e
@@ -321,7 +322,12 @@ agregados, e **recusa** se o teste medido não for do modelo atual. A página Co
 os gráficos leem desse arquivo (`features/conteudo/modelo.js`); commitá-lo dispara o deploy do
 site. Do mesmo JSON, `graficos_readme.py` (chamado pelo `export_web`) regera os SVGs de
 `docs/graficos/` e a tabela de resultados do README, entre `<!-- resultados:inicio/fim -->`: não
-edite esse trecho à mão. `tests/test_metricas_site.py` falha se o arquivo divergir do modelo ou do teste, e um atributo
+edite esse trecho à mão. `mapa_bairros.py` (também chamado pelo `export_web`) gera o
+`mapa-bairros.json` da seção Mapa da Home: polígonos da malha de bairros do IBGE (baixada para
+`data/ibge/` e conferida por SHA-256), agregados fora da amostra (`por_bairro` do artefato, só com
+5+ imóveis), dois anúncios sorteados por bairro (só com 15+ imóveis, sem rua/URL/anunciante, área e
+preço arredondados) e a faixa de um imóvel padrão calculada pelo modelo. A seção é carregada sob
+demanda (`lazy`) para não pesar o bundle da Home. `tests/test_metricas_site.py` falha se o arquivo divergir do modelo ou do teste, e um atributo
 novo sem grupo em `GRUPOS_ATRIBUTO` quebra o export de propósito. Defina a variável
 `API_URL` do repositório; sem ela o workflow de deploy do site falha de propósito.
 

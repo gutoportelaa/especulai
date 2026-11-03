@@ -1,6 +1,9 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.8.0/schema.json",
 	"files": {
-		"ignore": ["src/features/conteudo/metricas-modelo.json"]
+		"ignore": [
+			"src/features/conteudo/metricas-modelo.json",
+			"src/features/conteudo/mapa-bairros.json"
+		]
 	}
 }
