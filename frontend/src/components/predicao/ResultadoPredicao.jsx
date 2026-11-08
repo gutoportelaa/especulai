@@ -36,7 +36,7 @@ export function ResultadoPredicao({ prediction, moeda }) {
 			className="mb-8"
 		>
 			<Card className="overflow-hidden border-primary/40 bg-gradient-to-b from-primary/5 to-background">
-				<CardContent className="space-y-6 p-6 text-center md:p-10">
+				<CardContent className="space-y-5 p-6 text-center md:p-8">
 					<div className="flex items-center justify-center gap-2">
 						<img src={logo} alt="" className="size-6" />
 						<p className="text-sm font-medium text-muted-foreground">
@@ -48,11 +48,11 @@ export function ResultadoPredicao({ prediction, moeda }) {
 						initial={{ scale: 0.9, opacity: 0 }}
 						animate={{ scale: 1, opacity: 1 }}
 						transition={{ type: "spring", stiffness: 260, damping: 18 }}
-						className="text-5xl font-bold tracking-tight text-primary tabular-nums md:text-6xl"
+						className="text-3xl font-bold tracking-tight text-primary tabular-nums md:text-4xl"
 					>
 						{moeda(valor)}
 						{aluguel && (
-							<span className="text-2xl font-medium text-muted-foreground">
+							<span className="text-lg font-medium text-muted-foreground">
 								/mês
 							</span>
 						)}
@@ -66,42 +66,57 @@ export function ResultadoPredicao({ prediction, moeda }) {
 						</span>
 					)}
 
-					<div className="mx-auto max-w-md space-y-2 pt-2">
-						<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-							Margem de erro
-						</p>
+					<div className="mx-auto max-w-lg space-y-3 pt-2">
 						<div className="relative h-1.5 rounded-full bg-gradient-to-r from-primary/15 via-primary/50 to-primary/15">
 							<div
 								className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow"
 								style={{ left: `${posicao}%` }}
 							/>
 						</div>
-						<div className="flex justify-between text-sm tabular-nums">
-							<span className="text-left">
-								<span className="block text-muted-foreground">
-									{moeda(minimo)}
-								</span>
-								<span className="text-xs text-muted-foreground/80">
-									{variacao(valor, minimo)}
-								</span>
-							</span>
-							<span className="text-right">
-								<span className="block text-muted-foreground">
-									{moeda(maximo)}
-								</span>
-								<span className="text-xs text-muted-foreground/80">
-									{variacao(valor, maximo)}
-								</span>
-							</span>
+						<div className="grid grid-cols-2 gap-4 text-left">
+							{[
+								{
+									id: "min",
+									rotulo: "Mais em conta",
+									valor: minimo,
+									porque:
+										"imóvel mais simples, a reformar ou anunciado abaixo do mercado",
+								},
+								{
+									id: "max",
+									rotulo: "Mais caro",
+									valor: maximo,
+									porque:
+										"acabamento, andar, lazer ou outros extras que o modelo não vê",
+								},
+							].map((lado) => (
+								<div
+									key={lado.id}
+									className={lado.id === "max" ? "text-right" : ""}
+								>
+									<p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+										{lado.rotulo}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-foreground md:text-xl">
+										{moeda(lado.valor)}
+										<span className="ml-1.5 text-sm font-medium text-muted-foreground">
+											{variacao(valor, lado.valor)}
+										</span>
+									</p>
+									<p className="mt-0.5 text-xs text-muted-foreground">
+										{lado.porque}
+									</p>
+								</div>
+							))}
 						</div>
 					</div>
 
 					<p className="mx-auto flex max-w-md items-start justify-center gap-1.5 text-left text-xs text-muted-foreground">
 						<Info className="mt-0.5 size-3.5 shrink-0" />
 						<span>
-							Em {Math.round(nivel * 100)}% dos anúncios parecidos, o preço
-							pedido ficou dentro da margem. É uma especulação a partir de
-							anúncios, não uma avaliação do imóvel.
+							Margem de erro: em {Math.round(nivel * 100)}% dos anúncios
+							parecidos, o preço pedido ficou entre esses dois valores. É uma
+							especulação a partir de anúncios, não uma avaliação do imóvel.
 						</span>
 					</p>
 				</CardContent>
