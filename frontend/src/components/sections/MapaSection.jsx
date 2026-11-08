@@ -61,9 +61,12 @@ export function MapaSection() {
 			: `menos de ${MAPA.minimos.agregado} imóveis`;
 
 	return (
-		<section id="mapa" className="w-full py-20 md:py-32">
+		<section id="mapa" className="w-full py-12 md:py-16">
 			<div className="container mx-auto px-4 md:px-6">
-				<SectionHeading badge="Mapa" titulo="O mercado, bairro a bairro">
+				<SectionHeading
+					badge="Interno"
+					titulo="Dados de treino e erros do modelo, bairro a bairro"
+				>
 					Preço pedido, quantidade de anúncios e o desempenho do modelo nos{" "}
 					{MAPA.bairros.length} bairros de Teresina. Escolha um bairro para ver
 					o imóvel padrão e anúncios reais comparados com a faixa do modelo.

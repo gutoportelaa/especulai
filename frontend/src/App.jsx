@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ScrollToHash } from "./components/layout/ScrollToHash";
+import { ROTAS_INTERNAS } from "./components/layout/rotasInternas";
 import { ComoFunciona } from "./pages/ComoFunciona";
 import { Faq } from "./pages/Faq";
 import { Home } from "./pages/Home";
@@ -16,6 +18,17 @@ function App() {
 				<Route path="/predict" element={<Predict />} />
 				<Route path="/como-funciona" element={<ComoFunciona />} />
 				<Route path="/faq" element={<Faq />} />
+				{ROTAS_INTERNAS.map(({ path, Pagina }) => (
+					<Route
+						key={path}
+						path={path}
+						element={
+							<Suspense fallback={null}>
+								<Pagina />
+							</Suspense>
+						}
+					/>
+				))}
 			</Routes>
 		</BrowserRouter>
 	);

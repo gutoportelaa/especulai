@@ -258,6 +258,12 @@ frontend/src/
 | `/predict` | `Predict` | Formulário de estimativa |
 | `/como-funciona` | `ComoFunciona` | Metodologia, resultados do teste, confiança, limitações |
 | `/faq` | `Faq` | Perguntas por categoria, com âncoras (`/faq#privacidade`) |
+| `/admin/dados` | `AdminDados` | **Só em `make web-dev`.** Mapa com dados de treino, erros e anúncios reais por bairro |
+
+Rotas internas ficam em `components/layout/rotasInternas.jsx`, atrás de `import.meta.env.DEV`: o
+build de produção elimina o ramo e a página nem é gerada. Site estático não tem área restrita; o
+que vai para o build é público, com ou sem link. Para publicar uma rota interna, ponha autenticação
+na frente (Cloudflare Access, por exemplo), não um link escondido.
 
 Links internos **sempre** por `<Link>` do router (inclusive âncoras: `to={{ pathname: "/", hash: "#features" }}`).
 `<a href="/#...">` ignora o basename `/especulai/` e dá 404 no GitHub Pages. `ScrollToHash` rola até a
@@ -300,7 +306,7 @@ em float32 contra threshold float64 (`Math.fround` em `preverLog`).
 | Onde | Arquivo | O que garante |
 |---|---|---|
 | Python | `tests/test_web_export_parity.py` | árvores exportadas == sklearn, para o vetor montado pelo código de treino (`matriz` + `X_com`) |
-| Python | `tests/test_metricas_site.py` | `metricas-modelo.json`, SVGs e tabela do README == modelo publicado e teste medido; `mapa-bairros.json` em dia e sem nada abaixo dos mínimos de publicação |
+| Python | `tests/test_metricas_site.py` | `metricas-modelo.json`, SVGs e tabela do README == modelo publicado e teste medido; `mapa-bairros.json` e `demo-hero.json` em dia e sem nada abaixo dos mínimos de publicação |
 | Python | `tests/test_cifrar_modelo.py` | formato do `.enc`, chave de 256 bits (600), chave errada/adulteração rejeitadas, nonce novo |
 | JS | `deploy/worker/test/inferencia.test.js` | Worker == fixtures do sklearn; abre o `.enc` feito pelo Python; rejeita chave errada |
 | JS | `deploy/worker/test/handler.test.js` | validação, 429, IP forjado, CORS, 503 genérico, falha fechada |
@@ -308,6 +314,7 @@ em float32 contra threshold float64 (`Math.fround` em `preverLog`).
 | JS | `frontend/.../utils.test.js` | normalização do payload do formulário |
 | JS | `frontend/.../escalas.test.js` | escalas e marcas dos gráficos, formatação pt-BR |
 | JS | `frontend/.../mapa.test.js` | classes por quantil e cores do mapa, desenho e imóvel padrão de todo bairro |
+| JS | `frontend/.../demo.test.js` | sorteio dos pins do hero: afastados, com valor do negócio, variando entre ciclos |
 
 Retreinou? `python -m ml.pipeline.treino_final`, `make cifrar-modelo`, `uv run pytest tests/`
 (regera as fixtures), `make test-worker`, commite os `.enc` **e o `metricas-modelo.json`**, e
@@ -323,11 +330,12 @@ os gráficos leem desse arquivo (`features/conteudo/modelo.js`); commitá-lo dis
 site. Do mesmo JSON, `graficos_readme.py` (chamado pelo `export_web`) regera os SVGs de
 `docs/graficos/` e a tabela de resultados do README, entre `<!-- resultados:inicio/fim -->`: não
 edite esse trecho à mão. `mapa_bairros.py` (também chamado pelo `export_web`) gera o
-`mapa-bairros.json` da seção Mapa da Home: polígonos da malha de bairros do IBGE (baixada para
+`mapa-bairros.json` da página interna `/admin/dados` e da seção Cobertura da Como Funciona: polígonos da malha de bairros do IBGE (baixada para
 `data/ibge/` e conferida por SHA-256), agregados fora da amostra (`por_bairro` do artefato, só com
 5+ imóveis), dois anúncios sorteados por bairro (só com 15+ imóveis, sem rua/URL/anunciante, área e
-preço arredondados) e a faixa de um imóvel padrão calculada pelo modelo. A seção é carregada sob
-demanda (`lazy`) para não pesar o bundle da Home. `tests/test_metricas_site.py` falha se o arquivo divergir do modelo ou do teste, e um atributo
+preço arredondados) e a faixa de um imóvel padrão calculada pelo modelo. Do mesmo arquivo sai o `demo-hero.json`
+(limites dos bairros sem dado nenhum e os bairros com confiança alta, para a animação do hero).
+Mapa e demo são carregados sob demanda (`lazy`) para não pesar o bundle principal. `tests/test_metricas_site.py` falha se o arquivo divergir do modelo ou do teste, e um atributo
 novo sem grupo em `GRUPOS_ATRIBUTO` quebra o export de propósito. Defina a variável
 `API_URL` do repositório; sem ela o workflow de deploy do site falha de propósito.
 

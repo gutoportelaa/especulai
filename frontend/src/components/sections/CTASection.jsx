@@ -24,8 +24,8 @@ export function CTASection({
 						Pronto para Descobrir o Valor do Seu Imóvel?
 					</h2>
 					<p className="mx-auto max-w-[700px] text-primary-foreground/80 md:text-xl">
-						Informe área, quartos, banheiros, tipo e bairro e veja a faixa de
-						preço provável em Teresina.
+						Informe área, quartos, banheiros, tipo e bairro e veja o valor
+						estimado em Teresina.
 					</p>
 					<div className="flex flex-col sm:flex-row gap-4 mt-4">
 						<Link to="/predict">

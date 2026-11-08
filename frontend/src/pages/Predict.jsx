@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, TrendingUp } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
+import { ResultadoPredicao } from "../components/predicao/ResultadoPredicao";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -57,8 +58,8 @@ export function Predict() {
 								Estime o Preço de Venda ou Aluguel
 							</h1>
 							<p className="text-muted-foreground md:text-lg">
-								Estimativa para imóveis em Teresina (PI), com uma{" "}
-								<strong>faixa de preço</strong>. É o preço{" "}
+								Valor estimado para imóveis em Teresina (PI), com a{" "}
+								<strong>margem de erro</strong> ao lado. É o preço{" "}
 								<strong>pedido nos anúncios</strong>, não o de fechamento.
 							</p>
 						</div>
@@ -259,57 +260,7 @@ export function Predict() {
 						)}
 
 						{prediction && (
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								className="mb-8"
-							>
-								<Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-primary/10">
-									<CardContent className="pt-6">
-										<div className="flex items-start gap-4">
-											<div className="rounded-full bg-primary/10 p-3">
-												<TrendingUp className="size-6 text-primary" />
-											</div>
-											<div className="flex-1">
-												<div className="flex items-center gap-2 mb-2">
-													<CheckCircle2 className="size-5 text-primary" />
-													<h3 className="text-xl font-bold">
-														Predição Concluída
-													</h3>
-												</div>
-												<div className="space-y-2">
-													<div>
-														<p className="text-sm text-muted-foreground">
-															{prediction.negocio === "aluguel"
-																? "Aluguel mensal provável"
-																: "Preço de venda provável"}{" "}
-															({Math.round(prediction.nivel * 100)}% de chance)
-														</p>
-														<p className="text-3xl font-bold text-primary">
-															{moeda(prediction.minimo)} a{" "}
-															{moeda(prediction.maximo)}
-														</p>
-														<p className="text-sm text-muted-foreground">
-															Estimativa central:{" "}
-															{moeda(prediction.preco_estimado)}
-														</p>
-													</div>
-													{prediction.confianca && (
-														<div>
-															<p className="text-sm text-muted-foreground">
-																Nível de Confiança
-															</p>
-															<Badge variant="secondary" className="mt-1">
-																{prediction.confianca}
-															</Badge>
-														</div>
-													)}
-												</div>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-							</motion.div>
+							<ResultadoPredicao prediction={prediction} moeda={moeda} />
 						)}
 					</motion.div>
 				</div>

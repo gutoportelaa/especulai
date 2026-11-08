@@ -10,7 +10,6 @@ import { Button } from "../ui/button";
 // mandava para a raiz do domínio (404).
 const NAV = [
 	{ to: { pathname: "/", hash: "#features" }, rotulo: "Recursos" },
-	{ to: { pathname: "/", hash: "#mapa" }, rotulo: "Mapa" },
 	{ to: "/como-funciona", rotulo: "Como Funciona" },
 	{ to: "/faq", rotulo: "FAQ" },
 ];
