@@ -1,8 +1,14 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
+import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+
+// Os limites dos bairros pesam ~30 KB: a demo vem num pedaço à parte, sem atrasar o texto do hero.
+const HeroDemo = lazy(() =>
+	import("./HeroDemo").then((m) => ({ default: m.HeroDemo })),
+);
 
 export function HeroSection() {
 	return (
@@ -26,9 +32,9 @@ export function HeroSection() {
 						Descubra o Valor Real do Seu Imóvel
 					</h1>
 					<p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-						Uma faixa de preço para imóveis de venda e aluguel em Teresina,
-						estimada por machine learning a partir de anúncios reais. Preço
-						pedido, não de fechamento.
+						O valor de venda ou aluguel do seu imóvel em Teresina, especulado
+						por machine learning a partir de anúncios reais, com a margem de
+						erro ao lado. Preço pedido, não de fechamento.
 					</p>
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
 						<Link to="/predict">
@@ -54,7 +60,7 @@ export function HeroSection() {
 						</div>
 						<div className="flex items-center gap-1">
 							<Check className="size-4 text-primary" />
-							<span>Faixa de preço com confiança</span>
+							<span>Valor estimado com margem de erro</span>
 						</div>
 						<div className="flex items-center gap-1">
 							<Check className="size-4 text-primary" />
@@ -70,14 +76,10 @@ export function HeroSection() {
 					className="relative mx-auto max-w-5xl"
 				>
 					<div className="rounded-xl overflow-hidden shadow-2xl border border-border/40 bg-gradient-to-b from-background to-muted/20">
-						<div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-							<div className="text-center p-8">
-								<h3 className="text-2xl font-bold mb-4">Interface Intuitiva</h3>
-								<p className="text-muted-foreground">
-									Preencha os dados do imóvel e receba uma faixa de preço em
-									segundos
-								</p>
-							</div>
+						<div className="bg-gradient-to-br from-primary/10 to-primary/5 md:aspect-video">
+							<Suspense fallback={<div className="min-h-[560px] md:min-h-0" />}>
+								<HeroDemo />
+							</Suspense>
 						</div>
 						<div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-black/10" />
 					</div>

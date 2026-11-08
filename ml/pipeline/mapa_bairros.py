@@ -47,6 +47,7 @@ MALHA_URL = (
 )
 MALHA_SHA256 = "cfd26ee37c8ca666e12eb5719ebdb2e0f7b108ded722cadc716e2ee82e347309"
 SITE_MAPA = PROJECT_ROOT / "frontend" / "src" / "features" / "conteudo" / "mapa-bairros.json"
+SITE_DEMO = SITE_MAPA.with_name("demo-hero.json")
 NEGOCIOS = ("venda", "aluguel")
 
 CRS_METRICO = "EPSG:31983"  # SIRGAS 2000 / UTM 23S: Teresina inteira, distâncias em metros
@@ -252,6 +253,36 @@ def gerar(artefatos: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def demo_hero(mapa: dict[str, Any]) -> dict[str, Any]:
+    """Limites dos bairros e candidatos a pin para a animação do hero, sem rodar o modelo de novo.
+
+    Os limites vão sem dado nenhum (só o desenho). Um bairro é candidato num negócio quando tem
+    confiança alta e amostra para exemplo; o site sorteia os pins a cada ciclo.
+    """
+
+    def valor(b: dict[str, Any], negocio: str) -> dict[str, object] | None:
+        d = b[negocio]
+        ok = d["padrao"]["confianca"] == "alta" and d["imoveis"] >= mapa["minimos"]["exemplo"]
+        return {k: d["padrao"][k] for k in ("central", "minimo", "maximo")} if ok else None
+
+    candidatos = []
+    for b in mapa["bairros"]:
+        valores = {n: v for n in NEGOCIOS if (v := valor(b, n)) is not None}
+        if valores:
+            candidatos.append(
+                {"id": b["id"], "nome": b["nome"], "x": b["x"], "y": b["y"], **valores}
+            )
+    return {
+        "modelo": mapa["modelo"],
+        "largura": mapa["largura"],
+        "altura": mapa["altura"],
+        "contorno": mapa["contorno"],
+        "padrao": mapa["padrao"],
+        "bairros": [{"id": b["id"], "d": b["d"]} for b in mapa["bairros"]],
+        "candidatos": candidatos,
+    }
+
+
 def carregar_artefatos() -> dict[str, dict[str, Any]]:
     return {n: joblib.load(ARTIFACT_DIR / f"final_{n}.joblib") for n in NEGOCIOS}
 
@@ -260,6 +291,9 @@ def main() -> None:
     mapa = gerar(carregar_artefatos())
     SITE_MAPA.write_text(
         json.dumps(mapa, ensure_ascii=False, separators=(",", ":")) + "\n", "utf-8"
+    )
+    SITE_DEMO.write_text(
+        json.dumps(demo_hero(mapa), ensure_ascii=False, separators=(",", ":")) + "\n", "utf-8"
     )
     kb = SITE_MAPA.stat().st_size / 1024
     print(

@@ -22,7 +22,7 @@ export function FeaturesSection() {
 	const features = [
 		{
 			title: "Análise Rápida",
-			description: "Preencha seis campos e veja a faixa de preço em segundos.",
+			description: "Preencha seis campos e veja o valor estimado em segundos.",
 			icon: <Zap className="size-5" />,
 		},
 		{
@@ -40,7 +40,7 @@ export function FeaturesSection() {
 		{
 			title: "Faixa, não só um número",
 			description:
-				"A faixa tem 80% de chance de conter o preço anunciado, e cada estimativa vem com um nível de confiança.",
+				"Cada valor vem com a margem de erro (80% de chance de conter o preço anunciado) e um nível de confiança.",
 			icon: <TrendingUp className="size-5" />,
 		},
 		{

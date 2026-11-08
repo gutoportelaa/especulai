@@ -12,17 +12,17 @@ export const FAQ_CATEGORIAS = [
 			{
 				pergunta: "O que o Especulai estima?",
 				resposta:
-					"O preço pedido em anúncios de imóveis residenciais em Teresina, para venda ou aluguel. A resposta é uma faixa de preço com uma estimativa central e um nível de confiança.",
+					"O preço pedido em anúncios de imóveis residenciais em Teresina, para venda ou aluguel. A resposta é um valor estimado, com a margem de erro ao lado e um nível de confiança.",
 				destaque: true,
 			},
 			{
-				pergunta: "Por que uma faixa, e não um número?",
-				resposta: `Porque um número só seria falso de tão preciso. Em anúncios que o modelo nunca viu, só ${pct(VENDA.dentro20, { casas: 0 })} das estimativas centrais de venda e ${pct(ALUGUEL.dentro20, { casas: 0 })} das de aluguel ficam a ±20% do preço pedido. A faixa contém o preço pedido em cerca de 80% dos casos, e é ela que serve para decidir.`,
+				pergunta: "Por que o valor vem com uma margem?",
+				resposta: `Porque o valor é uma especulação, e é honesto dizer o quanto ela erra. Em anúncios que o modelo nunca viu, ${pct(VENDA.dentro20, { casas: 0 })} dos valores estimados de venda e ${pct(ALUGUEL.dentro20, { casas: 0 })} dos de aluguel ficaram a até 20% do preço pedido. A margem mostrada contém o preço pedido em cerca de 80% dos casos.`,
 				destaque: true,
 			},
 			{
 				pergunta: "O que quer dizer “80% de chance”?",
-				resposta: `Que, em 100 imóveis parecidos com o seu, o preço anunciado de cerca de 80 cairia dentro da faixa e o de 20 ficaria fora, acima ou abaixo. Medimos isso no conjunto de teste: ${pct(VENDA.cobertura)} na venda e ${pct(ALUGUEL.cobertura)} no aluguel.`,
+				resposta: `Que, em 100 imóveis parecidos com o seu, o preço anunciado de cerca de 80 cairia dentro da margem e o de 20 ficaria fora, acima ou abaixo. Medimos isso no conjunto de teste: ${pct(VENDA.cobertura)} na venda e ${pct(ALUGUEL.cobertura)} no aluguel.`,
 			},
 			{
 				pergunta: "Por que preço pedido, e não o preço de venda?",
@@ -109,7 +109,7 @@ export const FAQ_CATEGORIAS = [
 			{
 				pergunta: "Meus dados são seguros?",
 				resposta:
-					"Pedimos apenas características do imóvel, nunca nome, endereço exato ou contato. A API calcula a faixa e não grava o que você digitou.",
+					"Pedimos apenas características do imóvel, nunca nome, endereço exato ou contato. A API calcula o valor e não grava o que você digitou.",
 				destaque: true,
 			},
 			{

@@ -3,7 +3,8 @@
 	"files": {
 		"ignore": [
 			"src/features/conteudo/metricas-modelo.json",
-			"src/features/conteudo/mapa-bairros.json"
+			"src/features/conteudo/mapa-bairros.json",
+			"src/features/conteudo/demo-hero.json"
 		]
 	}
 }

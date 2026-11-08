@@ -46,7 +46,8 @@ export function usePrediction() {
 		try {
 			const payload = normalizePredictionPayload(formData);
 			const data = await predictImovel(payload.negocio, payload);
-			setPrediction(data);
+			// A API não ecoa o negócio; o card precisa dele para dizer "aluguel" e "/mês".
+			setPrediction({ ...data, negocio: payload.negocio });
 		} catch (err) {
 			setError(err.message || "Não foi possível obter a predição");
 		} finally {

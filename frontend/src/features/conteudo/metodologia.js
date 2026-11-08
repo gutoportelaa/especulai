@@ -72,9 +72,9 @@ export const ETAPAS = [
 	},
 	{
 		id: "faixa",
-		titulo: "Uma faixa de 80%",
+		titulo: "Valor e margem de 80%",
 		resumo:
-			"Em vez de um número, a resposta é a faixa que contém o preço pedido em 80% dos casos.",
+			"Além do valor estimado, a resposta traz a margem que contém o preço pedido em 80% dos casos.",
 		detalhe:
 			"A largura vem dos erros do próprio modelo em anúncios que ele não viu, separada por terço de preço previsto. Com uma largura única, a faixa acertava 80% no total, mas só 75% nos imóveis caros.",
 		numeros: [
@@ -185,7 +185,7 @@ export const PROTECOES = [
 	{
 		titulo: "Modelo no servidor",
 		texto:
-			"O cálculo acontece numa API própria. O navegador recebe só a faixa, arredondada, e nunca o modelo.",
+			"O cálculo acontece numa API própria. O navegador recebe só o valor e a margem, arredondados, e nunca o modelo.",
 	},
 	{
 		titulo: "Pesos cifrados",

@@ -21,24 +21,28 @@ export function ExemploFaixa() {
 									{ex.rotulo}
 								</p>
 								<p className="text-sm text-muted-foreground">
-									Estimativa central de {reaisCompacto(ex.central)}
-									{ex.sufixo}, o preço pedido mediano do mercado
+									Um imóvel no meio do mercado
 								</p>
 							</div>
 
 							<div className="text-center">
 								<p className="text-xs uppercase tracking-wide text-muted-foreground">
-									Faixa provável (80%)
+									Valor estimado
 								</p>
-								<p className="text-2xl md:text-3xl font-bold tracking-tight">
-									{reais(ex.minimo)} – {reais(ex.maximo)}
+								<p className="text-3xl md:text-4xl font-bold tracking-tight tabular-nums">
+									{reais(ex.central)}
 									<span className="text-base font-medium text-muted-foreground">
 										{ex.sufixo}
 									</span>
 								</p>
+								<p className="mt-1 text-sm text-muted-foreground">
+									Pode variar de {reaisCompacto(ex.minimo)} a{" "}
+									{reaisCompacto(ex.maximo)}
+									{ex.sufixo} (80% dos casos)
+								</p>
 							</div>
 
-							<div className="relative h-3 rounded-full bg-gradient-to-r from-primary/20 via-primary to-primary/20">
+							<div className="relative h-2 rounded-full bg-gradient-to-r from-primary/20 via-primary to-primary/20">
 								{/* A faixa é simétrica em log, então em reais a central fica à esquerda do meio. */}
 								<div
 									className="absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-background bg-primary shadow"
@@ -49,9 +53,7 @@ export function ExemploFaixa() {
 							</div>
 							<div className="flex justify-between text-xs text-muted-foreground">
 								<span>{reais(ex.minimo)}</span>
-								<span className="font-semibold text-foreground">
-									central {reais(ex.central)}
-								</span>
+								<span>margem de erro</span>
 								<span>{reais(ex.maximo)}</span>
 							</div>
 						</CardContent>

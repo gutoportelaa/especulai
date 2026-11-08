@@ -21,7 +21,7 @@ export function HowItWorksSection() {
 			step: "03",
 			title: "Receba a Estimativa",
 			description:
-				"Veja a faixa de preço provável, a estimativa central e o nível de confiança, que depende do quanto o modelo conhece o bairro.",
+				"Veja o valor estimado, a margem de erro e o nível de confiança, que depende do quanto o modelo conhece o bairro.",
 		},
 	];
 
@@ -50,8 +50,7 @@ export function HowItWorksSection() {
 						Processo Simples, Resultados Poderosos
 					</h2>
 					<p className="max-w-[800px] text-muted-foreground md:text-lg">
-						Em apenas três passos, você obtém uma faixa de preço para o seu
-						imóvel.
+						Em apenas três passos, você obtém o valor estimado do seu imóvel.
 					</p>
 				</motion.div>
 

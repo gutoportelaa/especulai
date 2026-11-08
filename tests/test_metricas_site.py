@@ -113,3 +113,11 @@ def test_mapa_cobre_todos_os_bairros_do_ibge() -> None:
 def test_mapa_em_dia_com_os_artefatos() -> None:
     gerado = json.loads(json.dumps(mapa_bairros.gerar(mapa_bairros.carregar_artefatos())))
     assert _mapa() == gerado, "mapa-bairros.json desatualizado: rode `make export-web`"
+
+
+def test_demo_do_hero_em_dia_com_o_mapa() -> None:
+    demo = json.loads(mapa_bairros.SITE_DEMO.read_text("utf-8"))
+    assert demo == mapa_bairros.demo_hero(_mapa())
+    for n in ("venda", "aluguel"):
+        assert sum(n in c for c in demo["candidatos"]) >= 10
+    assert not any("imoveis" in b or "venda" in b for b in demo["bairros"])
